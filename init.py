@@ -19,7 +19,7 @@ class CommandApp:
         # Verifica e carrega dados do arquivo JSON
         self.commands = self.load_commands()
 
-        # Cria a barra de menu
+        # Criação da barra de menu
         self.create_menu()
 
         # Frame para a página inicial
@@ -80,9 +80,10 @@ class CommandApp:
         menu_bar = tk.Menu(self.root)
         self.root.config(menu=menu_bar)
 
-        file_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Add Application", command=self.open_add_application_window)
+        # Menu Applications
+        app_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Applications", menu=app_menu)
+        app_menu.add_command(label="Add Application", command=self.open_add_application_window)
 
     def update_home_display(self):
         for widget in self.frame_home.winfo_children():
@@ -99,23 +100,26 @@ class CommandApp:
             toolbar_frame = tk.Frame(app_frame)
             toolbar_frame.pack(fill="x")
 
+            # Botão para adicionar novos comandos
+            add_command_button = tk.Button(toolbar_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
+            add_command_button.pack(side="left", padx=5, pady=5)
+            self.add_tooltip(add_command_button, "Add New Command")
+
+            # Label do nome da aplicação
             app_label = tk.Label(toolbar_frame, text=app_name, font=('Arial', 12, 'bold'))
             app_label.pack(side="left", padx=5, pady=5)
 
-            edit_button = tk.Button(toolbar_frame, text="Edit", command=lambda app=app_name: self.open_edit_application_window(app))
-            edit_button.pack(side="left", padx=5)
-            self.add_tooltip(edit_button, "Edit Application")
+            # Botões Edit e Del como labels clicáveis
+            edit_app_button = tk.Button(toolbar_frame, text="Edit", command=lambda app=app_name: self.open_edit_application_window(app))
+            edit_app_button.pack(side="left", padx=5)
+            self.add_tooltip(edit_app_button, "Edit Application")
 
-            delete_button = tk.Button(toolbar_frame, text="Del", command=lambda app=app_name: self.confirm_delete_application(app))
-            delete_button.pack(side="left", padx=5)
-            self.add_tooltip(delete_button, "Delete Application")
+            delete_app_button = tk.Button(toolbar_frame, text="Del", command=lambda app=app_name: self.confirm_delete_application(app))
+            delete_app_button.pack(side="left", padx=5)
+            self.add_tooltip(delete_app_button, "Delete Application")
 
             separator = tk.Frame(app_frame, height=2, bd=1, relief="sunken")
             separator.pack(fill="x", padx=5, pady=5)
-
-            add_command_button = tk.Button(app_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
-            add_command_button.pack(pady=5)
-            self.add_tooltip(add_command_button, "Add New Command")
 
             for command_id, command_data in app_commands.items():
                 if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
