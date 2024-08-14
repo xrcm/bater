@@ -15,46 +15,35 @@
 
 ## Instalação
 
-1. **Clone o repositório:**
+1. Clone o repositório:
+   `git clone https://github.com/xrcm/bater.git`
 
-   ```bash
-   git clone https://github.com/xrcm/bater.git
-Navegue para o diretório do projeto:
+2. Navegue para o diretório do projeto:
+   `cd bater`
 
-   bash
-Copy code
-cd bater
-Execute a aplicação:
+3. Execute a aplicação:
+   `python init.py`
 
-   bash
-Copy code
-python init.py
-Uso
-Adicionar uma Aplicação: Clique em "File" > "Add Application" e insira o nome da aplicação.
-Adicionar um Comando: Selecione a aplicação e clique em "Add Cmd" para adicionar um comando.
-Executar um Comando: Clique em "Run" ao lado do comando desejado.
-Visualizar Histórico: Clique em "History" para ver o histórico de execuções.
-Editar/Excluir Aplicações e Comandos: Use os botões "Edit" e "Del" nas toolbars.
-Sair da Aplicação: Clique no botão "Sair" no canto inferior direito.
-Contribuição
-Fork o repositório.
+## Uso
 
-Crie uma branch para sua feature:
+- **Adicionar uma Aplicação:** Clique em "File" > "Add Application" e insira o nome da aplicação.
+- **Adicionar um Comando:** Selecione a aplicação e clique em "Add Cmd" para adicionar um comando.
+- **Executar um Comando:** Clique em "Run" ao lado do comando desejado.
+- **Visualizar Histórico:** Clique em "History" para ver o histórico de execuções.
+- **Editar/Excluir Aplicações e Comandos:** Use os botões "Edit" e "Del" nas toolbars.
+- **Sair da Aplicação:** Clique no botão "Sair" no canto inferior direito.
 
-bash
-Copy code
-git checkout -b feature/nome-da-feature
-Faça commit das suas alterações:
+## Contribuição
 
-bash
-Copy code
-git commit -am 'Descrição das mudanças'
-Envie para o branch:
+1. Fork o repositório.
+2. Crie uma branch para sua feature:
+   `git checkout -b feature/nome-da-feature`
+3. Faça commit das suas alterações:
+   `git commit -am 'Descrição das mudanças'`
+4. Envie para o branch:
+   `git push origin feature/nome-da-feature`
+5. Crie um Pull Request.
 
-bash
-Copy code
-git push origin feature/nome-da-feature
-Crie um Pull Request.
+## Licença
 
-Licença
-Este projeto é licenciado sob a Licença MIT. Veja o arquivo LICENSE para mais detalhes.
+Este projeto é licenciado sob a Licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
