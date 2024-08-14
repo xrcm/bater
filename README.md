@@ -1,5 +1,3 @@
-markdown
-Copy code
 # Bater
 
 **Bater** é uma aplicação gráfica para gerenciar e executar comandos de terminal. Desenvolvida em Python com Tkinter, a ferramenta permite adicionar, editar e excluir comandos, bem como visualizar seu histórico de execuções.
@@ -23,12 +21,12 @@ Copy code
    git clone https://github.com/xrcm/bater.git
 Navegue para o diretório do projeto:
 
-bash
+   bash
 Copy code
 cd bater
 Execute a aplicação:
 
-bash
+   bash
 Copy code
 python init.py
 Uso
