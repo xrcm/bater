@@ -27,9 +27,17 @@ class CommandApp:
         self.frame_home = tk.Frame(self.root)
         self.frame_home.pack(pady=10, fill=tk.BOTH, expand=True)
 
-        # Botão "Sair" fixo e centrado na parte inferior
-        self.quit_button = tk.Button(self.root, text="Sair", command=self.quit_application)
-        self.quit_button.pack(side=tk.BOTTOM, pady=10, anchor=tk.S)
+        # Frame para o botão "About" e "Sair"
+        bottom_frame = tk.Frame(self.root)
+        bottom_frame.pack(side=tk.BOTTOM, padx=10, pady=10, anchor=tk.SE, fill=tk.X)
+
+        # Botão "About"
+        self.about_button = tk.Button(bottom_frame, text="About", command=self.show_about_window)
+        self.about_button.pack(side=tk.RIGHT, padx=5)
+
+        # Botão "Sair" fixo no canto inferior direito
+        self.quit_button = tk.Button(bottom_frame, text="Sair", command=self.quit_application)
+        self.quit_button.pack(side=tk.RIGHT, padx=10)
 
         # Atualiza a exibição dos comandos
         self.update_home_display()
@@ -209,6 +217,7 @@ class CommandApp:
             dialog_window.destroy()
 
         tk.Button(dialog_window, text="OK", command=on_ok).pack(pady=5)
+        self.root.wait_window(dialog_window)
         return command_var.get()
 
     def is_valid_command_name(self, command_name):
