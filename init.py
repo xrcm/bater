@@ -121,11 +121,6 @@ class CommandApp:
             app_label = tk.Label(toolbar_frame, text=app_name, font=('Arial', 12, 'bold'))
             app_label.pack(side="left", padx=5, pady=5)
 
-            add_command_button = tk.Button(toolbar_frame, text="Add Cmd",
-                                           command=lambda app=app_name: self.open_add_command_window(app))
-            add_command_button.pack(side="left", padx=5)
-            self.add_tooltip(add_command_button, "Add New Command")
-
             edit_button = tk.Button(toolbar_frame, text="Edit",
                                     command=lambda app=app_name: self.open_edit_application_window(app))
             edit_button.pack(side="left", padx=5)
@@ -176,30 +171,61 @@ class CommandApp:
                 delete_command_button.pack(side="left", padx=5)
                 self.add_tooltip(delete_command_button, "Delete Command")
 
+            # Botão "Add Cmd"
+            add_command_button = tk.Button(app_frame, text="Add Cmd",
+                                           command=lambda app=app_name: self.open_add_command_window(app))
+            add_command_button.pack(pady=5)
+            self.add_tooltip(add_command_button, "Add New Command")
+
     def show_about_window(self):
         about_window = tk.Toplevel(self.root)
         about_window.title("About")
-        about_window.geometry("300x150")
+        about_window.geometry("400x250")
         about_window.resizable(False, False)
         self.center_window(about_window)
 
         tk.Label(about_window, text="BATER: Terminal Command Controller", font=("Arial", 12, "bold")).pack(pady=10)
-        tk.Label(about_window, text="Description: A modern interface for managing and executing commands efficiently.",
-                 wraplength=250).pack(pady=10)
+        tk.Label(about_window,
+                 text="Description: A modern interface for managing and executing commands efficiently.\n\n"
+                      "This application allows you to add, edit, and run terminal commands from a user-friendly interface. "
+                      "You can organize commands by application, view their execution history, and make changes easily.").pack(
+            pady=10, padx=10, wraplength=380)
+
+        help_button = tk.Button(about_window, text="Help", command=self.show_help_window)
+        help_button.pack(pady=10)
+
         tk.Button(about_window, text="OK", command=about_window.destroy).pack(pady=10)
 
+    def show_help_window(self):
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Help")
+        help_window.geometry("400x300")
+        help_window.resizable(False, False)
+        self.center_window(help_window)
+
+        tk.Label(help_window, text="Help and Usage Instructions", font=("Arial", 12, "bold")).pack(pady=10)
+        tk.Label(help_window, text="1. **Add Application**: Use the menu to add a new application.\n"
+                                   "2. **Add Command**: Within each application, click 'Add Cmd' to add a new command.\n"
+                                   "3. **Edit Application/Command**: Use the 'Edit' buttons to modify existing applications or commands.\n"
+                                   "4. **Run Command**: Click 'Run' to execute a command.\n"
+                                   "5. **Delete**: Remove applications or commands using the 'Del' buttons.\n"
+                                   "6. **View History**: Check the history of command executions using the 'History' button.").pack(
+            pady=10, padx=10, wraplength=380)
+
+        tk.Button(help_window, text="Close", command=help_window.destroy).pack(pady=10)
+
     def open_add_application_window(self):
-        app_name = simpledialog.askstring("Application Name", "Enter new application name:")
+        app_name = simpledialog.askstring("Add Application", "Enter application name:")
         if app_name:
             if app_name.lower() not in [key.lower() for key in self.commands.keys()]:
                 self.commands[app_name] = {}
                 self.save_commands()
                 self.update_home_display()
             else:
-                messagebox.showwarning("Warning", "Application already exists.")
+                messagebox.showwarning("Warning", "Application with this name already exists.")
 
     def open_add_command_window(self, app_name):
-        command_name = simpledialog.askstring("Command Name", "Enter the name for the command:")
+        command_name = simpledialog.askstring("Add Command", "Enter command name:")
         if command_name:
             if not self.is_valid_command_name(command_name):
                 messagebox.showerror("Error", "Command name cannot contain single or double quotes.")
