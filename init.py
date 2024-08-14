@@ -7,6 +7,7 @@ import shutil
 from datetime import datetime
 import uuid
 
+
 class CommandApp:
     def __init__(self, root):
         self.root = root
@@ -28,16 +29,7 @@ class CommandApp:
         self.frame_home.pack(pady=10, fill=tk.BOTH, expand=True)
 
         # Frame para o botão "About" e "Sair"
-        bottom_frame = tk.Frame(self.root)
-        bottom_frame.pack(side=tk.BOTTOM, padx=10, pady=10, anchor=tk.SE, fill=tk.X)
-
-        # Botão "About"
-        self.about_button = tk.Button(bottom_frame, text="About", command=self.show_about_window)
-        self.about_button.pack(side=tk.RIGHT, padx=5)
-
-        # Botão "Sair" fixo no canto inferior direito
-        self.quit_button = tk.Button(bottom_frame, text="Sair", command=self.quit_application)
-        self.quit_button.pack(side=tk.RIGHT, padx=10)
+        self.create_bottom_buttons()
 
         # Atualiza a exibição dos comandos
         self.update_home_display()
@@ -66,7 +58,8 @@ class CommandApp:
                 print(f"Invalid data for application '{app_name}': {commands}")
                 raise ValueError("Invalid commands format")
             for command_id, command_data in commands.items():
-                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data,
+                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     print(f"Invalid command data in app '{app_name}': {command_data}")
                     raise ValueError("Invalid command structure.")
 
@@ -97,6 +90,19 @@ class CommandApp:
         menu_bar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about_window)
 
+    def create_bottom_buttons(self):
+        # Frame para os botões "About" e "Sair"
+        self.bottom_frame = tk.Frame(self.root)
+        self.bottom_frame.place(relx=1.0, rely=1.0, anchor=tk.SE, relwidth=1.0, height=40)
+
+        # Botão "About"
+        self.about_button = tk.Button(self.bottom_frame, text="About", command=self.show_about_window)
+        self.about_button.place(relx=1.0, rely=0.5, anchor=tk.E, x=-90, y=0)  # Ajuste x para distância do botão "Sair"
+
+        # Botão "Sair"
+        self.quit_button = tk.Button(self.bottom_frame, text="Sair", command=self.quit_application)
+        self.quit_button.place(relx=1.0, rely=0.5, anchor=tk.E, x=-10)  # Lado direito, ajuste x para distância do canto
+
     def update_home_display(self):
         for widget in self.frame_home.winfo_children():
             widget.destroy()
@@ -115,15 +121,18 @@ class CommandApp:
             app_label = tk.Label(toolbar_frame, text=app_name, font=('Arial', 12, 'bold'))
             app_label.pack(side="left", padx=5, pady=5)
 
-            add_command_button = tk.Button(toolbar_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
+            add_command_button = tk.Button(toolbar_frame, text="Add Cmd",
+                                           command=lambda app=app_name: self.open_add_command_window(app))
             add_command_button.pack(side="left", padx=5)
             self.add_tooltip(add_command_button, "Add New Command")
 
-            edit_button = tk.Button(toolbar_frame, text="Edit", command=lambda app=app_name: self.open_edit_application_window(app))
+            edit_button = tk.Button(toolbar_frame, text="Edit",
+                                    command=lambda app=app_name: self.open_edit_application_window(app))
             edit_button.pack(side="left", padx=5)
             self.add_tooltip(edit_button, "Edit Application")
 
-            delete_button = tk.Button(toolbar_frame, text="Del", command=lambda app=app_name: self.confirm_delete_application(app))
+            delete_button = tk.Button(toolbar_frame, text="Del",
+                                      command=lambda app=app_name: self.confirm_delete_application(app))
             delete_button.pack(side="left", padx=5)
             self.add_tooltip(delete_button, "Delete Application")
 
@@ -131,7 +140,8 @@ class CommandApp:
             separator.pack(fill="x", padx=5, pady=5)
 
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data,
+                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
@@ -143,19 +153,26 @@ class CommandApp:
                 command_label = tk.Label(command_frame, text=command_name)
                 command_label.pack(side="left")
 
-                command_button = tk.Button(command_frame, text="Run", command=lambda cmd=command, frame=command_frame: self.run_command(cmd, frame))
+                command_button = tk.Button(command_frame, text="Run",
+                                           command=lambda cmd=command, frame=command_frame: self.run_command(cmd,
+                                                                                                             frame))
                 command_button.pack(side="left", padx=5)
                 self.add_tooltip(command_button, "Run Command")
 
-                history_button = tk.Button(command_frame, text="History", command=lambda app=app_name, cid=command_id: self.view_history(app, cid))
+                history_button = tk.Button(command_frame, text="History",
+                                           command=lambda app=app_name, cid=command_id: self.view_history(app, cid))
                 history_button.pack(side="left", padx=5)
                 self.add_tooltip(history_button, "View Command History")
 
-                edit_command_button = tk.Button(command_frame, text="Edit", command=lambda app=app_name, cid=command_id: self.open_edit_command_window(app, cid))
+                edit_command_button = tk.Button(command_frame, text="Edit", command=lambda app=app_name,
+                                                                                           cid=command_id: self.open_edit_command_window(
+                    app, cid))
                 edit_command_button.pack(side="left", padx=5)
                 self.add_tooltip(edit_command_button, "Edit Command")
 
-                delete_command_button = tk.Button(command_frame, text="Del", command=lambda app=app_name, cid=command_id: self.confirm_delete_command(app, cid))
+                delete_command_button = tk.Button(command_frame, text="Del", command=lambda app=app_name,
+                                                                                            cid=command_id: self.confirm_delete_command(
+                    app, cid))
                 delete_command_button.pack(side="left", padx=5)
                 self.add_tooltip(delete_command_button, "Delete Command")
 
@@ -167,7 +184,8 @@ class CommandApp:
         self.center_window(about_window)
 
         tk.Label(about_window, text="BATER: Terminal Command Controller", font=("Arial", 12, "bold")).pack(pady=10)
-        tk.Label(about_window, text="Description: A modern interface for managing and executing commands efficiently.", wraplength=250).pack(pady=10)
+        tk.Label(about_window, text="Description: A modern interface for managing and executing commands efficiently.",
+                 wraplength=250).pack(pady=10)
         tk.Button(about_window, text="OK", command=about_window.destroy).pack(pady=10)
 
     def open_add_application_window(self):
@@ -206,7 +224,6 @@ class CommandApp:
         dialog_window = tk.Toplevel(self.root)
         dialog_window.title("Enter Command")
         dialog_window.geometry("500x300")
-        self.center_window(dialog_window)
 
         tk.Label(dialog_window, text="Enter the command:").pack(pady=5)
         command_entry = scrolledtext.ScrolledText(dialog_window, height=10)
@@ -249,7 +266,8 @@ class CommandApp:
     def open_edit_application_window(self, app_name):
         new_app_name = simpledialog.askstring("Edit Application", "Enter new application name:", initialvalue=app_name)
         if new_app_name:
-            if new_app_name.lower() not in [key.lower() for key in self.commands.keys()] or new_app_name.lower() == app_name.lower():
+            if new_app_name.lower() not in [key.lower() for key in
+                                            self.commands.keys()] or new_app_name.lower() == app_name.lower():
                 self.commands[new_app_name] = self.commands.pop(app_name)
                 self.save_commands()
                 self.update_home_display()
@@ -259,7 +277,8 @@ class CommandApp:
     def open_edit_command_window(self, app_name, command_id):
         command_data = self.commands.get(app_name, {}).get(command_id, {})
         if command_data:
-            new_command_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=command_data['name'])
+            new_command_name = simpledialog.askstring("Edit Command", "Enter new command name:",
+                                                      initialvalue=command_data['name'])
             new_command = self.open_command_text_window() if new_command_name else command_data['command']
 
             if new_command_name and new_command:
@@ -321,10 +340,12 @@ class CommandApp:
         y = (screen_height // 2) - (height // 2)
         window.geometry(f'{width}x{height}+{x}+{y}')
 
+
 def main():
     root = tk.Tk()
     app = CommandApp(root)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
