@@ -10,7 +10,8 @@ import uuid
 class CommandApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Command Executor")
+        self.root.title("bater")
+        self.root.minsize(640, 480)
 
         # Caminho do arquivo JSON
         self.json_file = 'commands.json'
@@ -18,17 +19,27 @@ class CommandApp:
         # Verifica e carrega dados do arquivo JSON
         self.commands = self.load_commands()
 
+        # Criar menu superior
+        self.create_menu()
+
         # Frame para a página inicial
         self.frame_home = tk.Frame(self.root)
-        self.frame_home.pack(pady=10)
-
-        # Botão para abrir a janela de adicionar nova aplicação
-        self.add_app_button = tk.Button(self.frame_home, text="Add App", command=self.open_add_application_window)
-        self.add_app_button.pack(pady=10)
-        self.add_tooltip(self.add_app_button, "Add New Application")
+        self.frame_home.pack(pady=10, fill="both", expand=True)
 
         # Atualiza a exibição dos comandos
         self.update_home_display()
+
+    def create_menu(self):
+        menu_bar = tk.Menu(self.root)
+
+        # Menu de aplicativo
+        app_menu = tk.Menu(menu_bar, tearoff=0)
+        app_menu.add_command(label="Add App", command=self.open_add_application_window)
+        app_menu.add_separator()
+        app_menu.add_command(label="Sair", command=self.root.quit)
+
+        menu_bar.add_cascade(label="File", menu=app_menu)
+        self.root.config(menu=menu_bar)
 
     def load_commands(self):
         if os.path.exists(self.json_file):
@@ -40,7 +51,7 @@ class CommandApp:
                         for app_name, commands in data.items():
                             if isinstance(commands, dict):
                                 for command_id, command_data in commands.items():
-                                    if not isinstance(command_data, dict) or 'name' not in command_data:
+                                    if not isinstance(command_data, dict) ou 'name' not in command_data:
                                         print(f"Invalid command data in app '{app_name}': {command_data}")
                                         raise ValueError("Invalid command structure.")
                         return data
@@ -78,11 +89,6 @@ class CommandApp:
         # Limpa o frame
         for widget in self.frame_home.winfo_children():
             widget.destroy()
-
-        # Botão para adicionar novas aplicações
-        self.add_app_button = tk.Button(self.frame_home, text="Add App", command=self.open_add_application_window)
-        self.add_app_button.pack(pady=10)
-        self.add_tooltip(self.add_app_button, "Add New Application")
 
         # Exibe aplicações e comandos
         for app_name, app_commands in self.commands.items():
@@ -199,20 +205,21 @@ class CommandApp:
         command_entry = scrolledtext.ScrolledText(dialog_window, height=10)
         command_entry.pack(padx=10, pady=10)
 
-        # Função que será chamada ao clicar no botão "OK"
+        # Função que será chamada ao pressionar o botão OK
         def on_ok():
             command_var.set(command_entry.get("1.0", tk.END).strip())
             dialog_window.destroy()
 
         tk.Button(dialog_window, text="OK", command=on_ok).pack(pady=5)
 
-        # Aguardar até que a janela seja fechada
-        self.root.wait_window(dialog_window)
+        dialog_window.wait_window()  # Aguarda o fechamento da janela de diálogo
 
+        # Retorna o comando digitado
         return command_var.get()
 
     def is_valid_command_name(self, command_name):
-        return '"' not in command_name and "'" not in command_name
+        # Verifica se o nome do comando não contém aspas simples ou duplas
+        return "'" not in command_name and '"' not in command_name
 
     def run_command(self, command, command_frame):
         try:
