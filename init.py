@@ -19,7 +19,7 @@ class CommandApp:
         # Verifica e carrega dados do arquivo JSON
         self.commands = self.load_commands()
 
-        # Criar menu superior
+        # Criar barra de ferramentas superior
         self.create_menu()
 
         # Frame para a página inicial
@@ -32,13 +32,14 @@ class CommandApp:
     def create_menu(self):
         menu_bar = tk.Menu(self.root)
 
-        # Menu de aplicativo
-        app_menu = tk.Menu(menu_bar, tearoff=0)
-        app_menu.add_command(label="Add App", command=self.open_add_application_window)
-        app_menu.add_separator()
-        app_menu.add_command(label="Sair", command=self.root.quit)
+        # Botão para adicionar aplicação
+        menu_bar.add_command(label="Add Application", command=self.open_add_application_window)
 
-        menu_bar.add_cascade(label="File", menu=app_menu)
+        # Menu para sair da aplicação
+        quit_menu = tk.Menu(menu_bar, tearoff=0)
+        quit_menu.add_command(label="Sair", command=self.root.quit)
+        menu_bar.add_cascade(label="Sair", menu=quit_menu)
+
         self.root.config(menu=menu_bar)
 
     def load_commands(self):
@@ -47,11 +48,10 @@ class CommandApp:
                 with open(self.json_file, 'r') as file:
                     data = json.load(file)
                     if isinstance(data, dict):
-                        # Verificar a estrutura de cada aplicação e seus comandos
                         for app_name, commands in data.items():
                             if isinstance(commands, dict):
                                 for command_id, command_data in commands.items():
-                                    if not isinstance(command_data, dict) ou 'name' not in command_data:
+                                    if not isinstance(command_data, dict) or 'name' not in command_data:
                                         print(f"Invalid command data in app '{app_name}': {command_data}")
                                         raise ValueError("Invalid command structure.")
                         return data
@@ -130,7 +130,6 @@ class CommandApp:
             # Lista de comandos
             for command_id, command_data in app_commands.items():
                 if not isinstance(command_data, dict) or 'command' not in command_data or 'history' not in command_data:
-                    # Se o comando não for um dict ou não tiver 'command' e 'history', ignora este comando
                     continue
 
                 command_name = command_data['name']
@@ -164,7 +163,8 @@ class CommandApp:
     def open_add_application_window(self):
         app_name = simpledialog.askstring("Application Name", "Enter new application name:")
         if app_name:
-            if app_name.lower() not in map(str.lower, self.commands.keys()):
+            # Verifica se o nome da nova aplicação já existe, ignorando diferenças de maiúsculas e minúsculas
+            if app_name.lower() not in [key.lower() for key in self.commands.keys()]:
                 self.commands[app_name] = {}
                 self.save_commands()
                 self.update_home_display()
@@ -185,7 +185,7 @@ class CommandApp:
                     self.commands[app_name][command_id] = {
                         'name': command_name,
                         'command': command,
-                        'history': []  # Inicializa a lista de histórico vazia
+                        'history': []
                     }
                     self.save_commands()
                     self.update_home_display()
@@ -193,10 +193,8 @@ class CommandApp:
                     messagebox.showerror("Error", "Application does not exist.")
 
     def open_command_text_window(self):
-        # Usando uma variável para armazenar o comando digitado
         command_var = tk.StringVar()
 
-        # Criando uma janela de diálogo personalizada
         dialog_window = tk.Toplevel(self.root)
         dialog_window.title("Enter Command")
         dialog_window.geometry("500x300")
@@ -205,23 +203,25 @@ class CommandApp:
         command_entry = scrolledtext.ScrolledText(dialog_window, height=10)
         command_entry.pack(padx=10, pady=10)
 
-        # Função que será chamada ao pressionar o botão OK
         def on_ok():
             command_var.set(command_entry.get("1.0", tk.END).strip())
             dialog_window.destroy()
 
         tk.Button(dialog_window, text="OK", command=on_ok).pack(pady=5)
 
-        dialog_window.wait_window()  # Aguarda o fechamento da janela de diálogo
+        dialog_window.wait_window()
 
         # Retorna o comando digitado
         return command_var.get()
 
     def is_valid_command_name(self, command_name):
-        # Verifica se o nome do comando não contém aspas simples ou duplas
         return "'" not in command_name and '"' not in command_name
 
     def run_command(self, command, command_frame):
+        if not command:
+            messagebox.showerror("Error", "The command is empty. Please enter a valid command.")
+            return
+
         try:
             result = subprocess.run(command, shell=True, capture_output=True, text=True)
             if result.returncode == 0:
@@ -229,14 +229,12 @@ class CommandApp:
             else:
                 messagebox.showerror("Error", f"Command failed with error:\n{result.stderr}")
 
-            # Atualizar histórico
             self.update_command_history(command_frame, command, success=result.returncode == 0)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to run command: {str(e)}")
 
     def update_command_history(self, command_frame, command, success=True):
-        # Encontrar o comando na estrutura de dados e adicionar o histórico
         for app_name, app_commands in self.commands.items():
             for command_id, command_data in app_commands.items():
                 if command_data['command'] == command:
@@ -246,11 +244,9 @@ class CommandApp:
                         'success': success
                     })
 
-                    # Limitar o histórico a 100 entradas
                     command_data['history'] = command_data['history'][-100:]
                     self.save_commands()
-
-                    return  # Saímos assim que atualizamos o histórico
+                    return
 
     def view_history(self, app_name, command_id):
         command_data = self.commands.get(app_name, {}).get(command_id)
@@ -262,25 +258,24 @@ class CommandApp:
             history_text = scrolledtext.ScrolledText(history_window, wrap=tk.WORD)
             history_text.pack(expand=True, fill="both")
 
-            # Preenche o histórico
             for entry in command_data['history']:
                 timestamp = entry['timestamp']
                 success = "Success" if entry['success'] else "Failed"
                 history_text.insert(tk.END, f"{timestamp}: {success}\n")
 
-            # Botão para executar o comando novamente
             rerun_button = tk.Button(history_window, text="Rerun Command", command=lambda: self.run_command(command_data['command'], None))
             rerun_button.pack(pady=5)
 
-    def open_edit_application_window(self, app_name):
-        new_app_name = simpledialog.askstring("Edit Application Name", "Enter new application name:", initialvalue=app_name)
-        if new_app_name and new_app_name != app_name:
-            if new_app_name.lower() not in map(str.lower, self.commands.keys()):
-                self.commands[new_app_name] = self.commands.pop(app_name)
+    def open_add_application_window(self):
+        app_name = simpledialog.askstring("Application Name", "Enter new application name:")
+        if app_name:
+            # Verifica se o nome da nova aplicação já existe, ignorando diferenças de maiúsculas e minúsculas
+            if app_name.lower() not in [key.lower() for key in self.commands.keys()]:
+                self.commands[app_name] = {}
                 self.save_commands()
                 self.update_home_display()
             else:
-                messagebox.showwarning("Warning", "Application with this name already exists.")
+                messagebox.showwarning("Warning", "Application already exists.")
 
     def open_edit_command_window(self, app_name, command_id):
         command_data = self.commands.get(app_name, {}).get(command_id)
@@ -329,7 +324,6 @@ class CommandApp:
 
         widget.bind("<Enter>", show_tooltip)
         widget.bind("<Leave>", hide_tooltip)
-
 
 if __name__ == "__main__":
     root = tk.Tk()
