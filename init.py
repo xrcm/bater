@@ -10,8 +10,9 @@ import uuid
 class CommandApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Command Executor")
+        self.root.title("BATER: Terminal Command Controller")
         self.root.minsize(640, 400)
+        self.center_window()
 
         # Caminho do arquivo JSON
         self.json_file = 'commands.json'
@@ -19,16 +20,16 @@ class CommandApp:
         # Verifica e carrega dados do arquivo JSON
         self.commands = self.load_commands()
 
-        # Criação da barra de menu
+        # Cria a barra de menu
         self.create_menu()
 
         # Frame para a página inicial
         self.frame_home = tk.Frame(self.root)
         self.frame_home.pack(pady=10, fill=tk.BOTH, expand=True)
 
-        # Botão "Sair" fixo no canto inferior direito
+        # Botão "Sair" fixo e centrado na parte inferior
         self.quit_button = tk.Button(self.root, text="Sair", command=self.quit_application)
-        self.quit_button.pack(side=tk.RIGHT, padx=10, pady=10, anchor=tk.SE)
+        self.quit_button.pack(side=tk.BOTTOM, pady=10, anchor=tk.S)
 
         # Atualiza a exibição dos comandos
         self.update_home_display()
@@ -80,10 +81,13 @@ class CommandApp:
         menu_bar = tk.Menu(self.root)
         self.root.config(menu=menu_bar)
 
-        # Menu Applications
-        app_menu = tk.Menu(menu_bar, tearoff=0)
-        menu_bar.add_cascade(label="Applications", menu=app_menu)
-        app_menu.add_command(label="Add Application", command=self.open_add_application_window)
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Applications", menu=file_menu)
+        file_menu.add_command(label="Add Application", command=self.open_add_application_window)
+
+        help_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self.show_about_window)
 
     def update_home_display(self):
         for widget in self.frame_home.winfo_children():
@@ -100,23 +104,20 @@ class CommandApp:
             toolbar_frame = tk.Frame(app_frame)
             toolbar_frame.pack(fill="x")
 
-            # Botão para adicionar novos comandos
-            add_command_button = tk.Button(toolbar_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
-            add_command_button.pack(side="left", padx=5, pady=5)
-            self.add_tooltip(add_command_button, "Add New Command")
-
-            # Label do nome da aplicação
             app_label = tk.Label(toolbar_frame, text=app_name, font=('Arial', 12, 'bold'))
             app_label.pack(side="left", padx=5, pady=5)
 
-            # Botões Edit e Del como labels clicáveis
-            edit_app_button = tk.Button(toolbar_frame, text="Edit", command=lambda app=app_name: self.open_edit_application_window(app))
-            edit_app_button.pack(side="left", padx=5)
-            self.add_tooltip(edit_app_button, "Edit Application")
+            add_command_button = tk.Button(toolbar_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
+            add_command_button.pack(side="left", padx=5)
+            self.add_tooltip(add_command_button, "Add New Command")
 
-            delete_app_button = tk.Button(toolbar_frame, text="Del", command=lambda app=app_name: self.confirm_delete_application(app))
-            delete_app_button.pack(side="left", padx=5)
-            self.add_tooltip(delete_app_button, "Delete Application")
+            edit_button = tk.Button(toolbar_frame, text="Edit", command=lambda app=app_name: self.open_edit_application_window(app))
+            edit_button.pack(side="left", padx=5)
+            self.add_tooltip(edit_button, "Edit Application")
+
+            delete_button = tk.Button(toolbar_frame, text="Del", command=lambda app=app_name: self.confirm_delete_application(app))
+            delete_button.pack(side="left", padx=5)
+            self.add_tooltip(delete_button, "Delete Application")
 
             separator = tk.Frame(app_frame, height=2, bd=1, relief="sunken")
             separator.pack(fill="x", padx=5, pady=5)
@@ -149,6 +150,17 @@ class CommandApp:
                 delete_command_button = tk.Button(command_frame, text="Del", command=lambda app=app_name, cid=command_id: self.confirm_delete_command(app, cid))
                 delete_command_button.pack(side="left", padx=5)
                 self.add_tooltip(delete_command_button, "Delete Command")
+
+    def show_about_window(self):
+        about_window = tk.Toplevel(self.root)
+        about_window.title("About")
+        about_window.geometry("300x150")
+        about_window.resizable(False, False)
+        self.center_window(about_window)
+
+        tk.Label(about_window, text="BATER: Terminal Command Controller", font=("Arial", 12, "bold")).pack(pady=10)
+        tk.Label(about_window, text="Description: A modern interface for managing and executing commands efficiently.", wraplength=250).pack(pady=10)
+        tk.Button(about_window, text="OK", command=about_window.destroy).pack(pady=10)
 
     def open_add_application_window(self):
         app_name = simpledialog.askstring("Application Name", "Enter new application name:")
@@ -186,6 +198,7 @@ class CommandApp:
         dialog_window = tk.Toplevel(self.root)
         dialog_window.title("Enter Command")
         dialog_window.geometry("500x300")
+        self.center_window(dialog_window)
 
         tk.Label(dialog_window, text="Enter the command:").pack(pady=5)
         command_entry = scrolledtext.ScrolledText(dialog_window, height=10)
@@ -196,7 +209,6 @@ class CommandApp:
             dialog_window.destroy()
 
         tk.Button(dialog_window, text="OK", command=on_ok).pack(pady=5)
-        self.root.wait_window(dialog_window)
         return command_var.get()
 
     def is_valid_command_name(self, command_name):
@@ -287,6 +299,18 @@ class CommandApp:
 
     def quit_application(self):
         self.root.quit()
+
+    def center_window(self, window=None):
+        if window is None:
+            window = self.root
+        window.update_idletasks()
+        width = window.winfo_width()
+        height = window.winfo_height()
+        screen_width = window.winfo_screenwidth()
+        screen_height = window.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        window.geometry(f'{width}x{height}+{x}+{y}')
 
 def main():
     root = tk.Tk()
