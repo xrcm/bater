@@ -10,7 +10,7 @@ import uuid
 class CommandApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("bater")
+        self.root.title("Command Executor")
         self.root.minsize(640, 400)
 
         # Caminho do arquivo JSON
@@ -39,12 +39,7 @@ class CommandApp:
                 with open(self.json_file, 'r') as file:
                     data = json.load(file)
                     if isinstance(data, dict):
-                        for app_name, commands in data.items():
-                            if isinstance(commands, dict):
-                                for command_id, command_data in commands.items():
-                                    if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
-                                        print(f"Invalid command data in app '{app_name}': {command_data}")
-                                        raise ValueError("Invalid command structure.")
+                        self.validate_commands_data(data)
                         return data
                     else:
                         raise ValueError("Invalid data format")
@@ -55,6 +50,16 @@ class CommandApp:
         else:
             self.create_new_json_file()
             return {}
+
+    def validate_commands_data(self, data):
+        for app_name, commands in data.items():
+            if not isinstance(commands, dict):
+                print(f"Invalid data for application '{app_name}': {commands}")
+                raise ValueError("Invalid commands format")
+            for command_id, command_data in commands.items():
+                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                    print(f"Invalid command data in app '{app_name}': {command_data}")
+                    raise ValueError("Invalid command structure.")
 
     def save_commands(self):
         with open(self.json_file, 'w') as file:
@@ -180,7 +185,7 @@ class CommandApp:
 
         tk.Label(dialog_window, text="Enter the command:").pack(pady=5)
         command_entry = scrolledtext.ScrolledText(dialog_window, height=10)
-        command_entry.pack(padx=10, pady=10)
+        command_entry.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
         def on_ok():
             command_var.set(command_entry.get("1.0", tk.END).strip())
@@ -247,9 +252,10 @@ class CommandApp:
 
     def confirm_delete_application(self, app_name):
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the application '{app_name}'?"):
-            del self.commands[app_name]
-            self.save_commands()
-            self.update_home_display()
+            if app_name in self.commands:
+                del self.commands[app_name]
+                self.save_commands()
+                self.update_home_display()
 
     def confirm_delete_command(self, app_name, command_id):
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete this command?"):

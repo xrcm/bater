@@ -1,0 +1,46 @@
+{
+    "App1": {
+        "uuid1": {
+            "name": "command1",
+            "command": "echo Hello World",
+            "history": [
+                {
+                    "timestamp": "2024-08-14 17:37:57",
+                    "success": true
+                }
+            ]
+        },
+        "uuid2": {
+            "name": "command2",
+            "command": "ls -la",
+            "history": [
+                {
+                    "timestamp": "2024-08-14 17:38:13",
+                    "success": false
+                },
+                {
+                    "timestamp": "2024-08-14 17:38:23",
+                    "success": false
+                },
+                {
+                    "timestamp": "2024-08-14 17:38:27",
+                    "success": false
+                }
+            ]
+        }
+    },
+    "App2": {
+        "uuid3": {
+            "name": "command3",
+            "command": "ping google.com",
+            "history": []
+        }
+    },
+    "calc": {
+        "27b984d1-5018-4ec3-b0a6-5c5eb41ce552": {
+            "name": "abrir",
+            "command": "calc",
+            "history": []
+        }
+    }
+}
