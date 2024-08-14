@@ -11,7 +11,7 @@ class CommandApp:
     def __init__(self, root):
         self.root = root
         self.root.title("bater")
-        self.root.minsize(640, 480)
+        self.root.minsize(640, 400)
 
         # Caminho do arquivo JSON
         self.json_file = 'commands.json'
@@ -19,28 +19,19 @@ class CommandApp:
         # Verifica e carrega dados do arquivo JSON
         self.commands = self.load_commands()
 
-        # Criar barra de ferramentas superior
+        # Cria a barra de menu
         self.create_menu()
 
         # Frame para a página inicial
         self.frame_home = tk.Frame(self.root)
-        self.frame_home.pack(pady=10, fill="both", expand=True)
+        self.frame_home.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        # Botão "Sair" fixo no canto inferior direito
+        self.quit_button = tk.Button(self.root, text="Sair", command=self.quit_application)
+        self.quit_button.pack(side=tk.RIGHT, padx=10, pady=10, anchor=tk.SE)
 
         # Atualiza a exibição dos comandos
         self.update_home_display()
-
-    def create_menu(self):
-        menu_bar = tk.Menu(self.root)
-
-        # Botão para adicionar aplicação
-        menu_bar.add_command(label="Add Application", command=self.open_add_application_window)
-
-        # Menu para sair da aplicação
-        quit_menu = tk.Menu(menu_bar, tearoff=0)
-        quit_menu.add_command(label="Sair", command=self.root.quit)
-        menu_bar.add_cascade(label="Sair", menu=quit_menu)
-
-        self.root.config(menu=menu_bar)
 
     def load_commands(self):
         if os.path.exists(self.json_file):
@@ -51,7 +42,7 @@ class CommandApp:
                         for app_name, commands in data.items():
                             if isinstance(commands, dict):
                                 for command_id, command_data in commands.items():
-                                    if not isinstance(command_data, dict) or 'name' not in command_data:
+                                    if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                                         print(f"Invalid command data in app '{app_name}': {command_data}")
                                         raise ValueError("Invalid command structure.")
                         return data
@@ -70,71 +61,63 @@ class CommandApp:
             json.dump(self.commands, file, indent=4)
 
     def handle_invalid_json(self):
-        # Faz backup do arquivo JSON existente
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
         backup_file = f"{self.json_file}_old_{timestamp}.json"
         shutil.copy(self.json_file, backup_file)
-
-        # Cria um novo arquivo JSON vazio
         self.create_new_json_file()
-
-        # Informa o usuário sobre o backup criado
         messagebox.showinfo("Backup Created", f"Backup of the old file created as '{backup_file}'")
 
     def create_new_json_file(self):
         with open(self.json_file, 'w') as file:
             json.dump({}, file, indent=4)
 
+    def create_menu(self):
+        menu_bar = tk.Menu(self.root)
+        self.root.config(menu=menu_bar)
+
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Add Application", command=self.open_add_application_window)
+
     def update_home_display(self):
-        # Limpa o frame
         for widget in self.frame_home.winfo_children():
             widget.destroy()
 
-        # Exibe aplicações e comandos
         for app_name, app_commands in self.commands.items():
             if not isinstance(app_commands, dict):
-                # Se app_commands não for um dicionário, ignora esta aplicação
                 continue
 
             app_frame = tk.LabelFrame(self.frame_home, padx=10, pady=10)
             app_frame.pack(padx=10, pady=5, fill="x")
 
-            # Cabeçalho da aplicação com nome e labels clicáveis
-            header_frame = tk.Frame(app_frame)
-            header_frame.pack(fill="x")
+            # Barra de ferramentas para a aplicação
+            toolbar_frame = tk.Frame(app_frame)
+            toolbar_frame.pack(fill="x")
 
-            # Label do nome da aplicação
-            app_label = tk.Label(header_frame, text=app_name, font=('Arial', 12, 'bold'))
+            app_label = tk.Label(toolbar_frame, text=app_name, font=('Arial', 12, 'bold'))
             app_label.pack(side="left", padx=5, pady=5)
 
-            # Botões Edit e Del como labels clicáveis
-            edit_app_label = tk.Label(header_frame, text="Edit", fg="blue", cursor="hand2", font=('Arial', 10, 'italic'))
-            edit_app_label.pack(side="left", padx=5)
-            edit_app_label.bind("<Button-1>", lambda e, app=app_name: self.open_edit_application_window(app))
-            self.add_tooltip(edit_app_label, "Edit Application")
+            edit_button = tk.Button(toolbar_frame, text="Edit", command=lambda app=app_name: self.open_edit_application_window(app))
+            edit_button.pack(side="left", padx=5)
+            self.add_tooltip(edit_button, "Edit Application")
 
-            delete_app_label = tk.Label(header_frame, text="Del", fg="red", cursor="hand2", font=('Arial', 10, 'italic'))
-            delete_app_label.pack(side="left", padx=5)
-            delete_app_label.bind("<Button-1>", lambda e, app=app_name: self.confirm_delete_application(app))
-            self.add_tooltip(delete_app_label, "Delete Application")
+            delete_button = tk.Button(toolbar_frame, text="Del", command=lambda app=app_name: self.confirm_delete_application(app))
+            delete_button.pack(side="left", padx=5)
+            self.add_tooltip(delete_button, "Delete Application")
 
-            # Separador entre cabeçalho e lista de comandos
             separator = tk.Frame(app_frame, height=2, bd=1, relief="sunken")
             separator.pack(fill="x", padx=5, pady=5)
 
-            # Botão para adicionar novos comandos
             add_command_button = tk.Button(app_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
             add_command_button.pack(pady=5)
             self.add_tooltip(add_command_button, "Add New Command")
 
-            # Lista de comandos
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data, dict) or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
                 command = command_data['command']
-                history = command_data['history']
 
                 command_frame = tk.Frame(app_frame)
                 command_frame.pack(pady=5, fill="x")
@@ -142,7 +125,7 @@ class CommandApp:
                 command_label = tk.Label(command_frame, text=command_name)
                 command_label.pack(side="left")
 
-                command_button = tk.Button(command_frame, text="Run", command=lambda cmd=command: self.run_command(cmd, command_frame))
+                command_button = tk.Button(command_frame, text="Run", command=lambda cmd=command, frame=command_frame: self.run_command(cmd, frame))
                 command_button.pack(side="left", padx=5)
                 self.add_tooltip(command_button, "Run Command")
 
@@ -150,20 +133,17 @@ class CommandApp:
                 history_button.pack(side="left", padx=5)
                 self.add_tooltip(history_button, "View Command History")
 
-                edit_command_label = tk.Label(command_frame, text="Edit", fg="blue", cursor="hand2", font=('Arial', 8, 'italic'))
-                edit_command_label.pack(side="left", padx=5)
-                edit_command_label.bind("<Button-1>", lambda e, app=app_name, cid=command_id: self.open_edit_command_window(app, cid))
-                self.add_tooltip(edit_command_label, "Edit Command")
+                edit_command_button = tk.Button(command_frame, text="Edit", command=lambda app=app_name, cid=command_id: self.open_edit_command_window(app, cid))
+                edit_command_button.pack(side="left", padx=5)
+                self.add_tooltip(edit_command_button, "Edit Command")
 
-                delete_command_label = tk.Label(command_frame, text="Del", fg="red", cursor="hand2", font=('Arial', 8, 'italic'))
-                delete_command_label.pack(side="left", padx=5)
-                delete_command_label.bind("<Button-1>", lambda e, app=app_name, cid=command_id: self.confirm_delete_command(app, cid))
-                self.add_tooltip(delete_command_label, "Delete Command")
+                delete_command_button = tk.Button(command_frame, text="Del", command=lambda app=app_name, cid=command_id: self.confirm_delete_command(app, cid))
+                delete_command_button.pack(side="left", padx=5)
+                self.add_tooltip(delete_command_button, "Delete Command")
 
     def open_add_application_window(self):
         app_name = simpledialog.askstring("Application Name", "Enter new application name:")
         if app_name:
-            # Verifica se o nome da nova aplicação já existe, ignorando diferenças de maiúsculas e minúsculas
             if app_name.lower() not in [key.lower() for key in self.commands.keys()]:
                 self.commands[app_name] = {}
                 self.save_commands()
@@ -194,7 +174,6 @@ class CommandApp:
 
     def open_command_text_window(self):
         command_var = tk.StringVar()
-
         dialog_window = tk.Toplevel(self.root)
         dialog_window.title("Enter Command")
         dialog_window.geometry("500x300")
@@ -208,124 +187,101 @@ class CommandApp:
             dialog_window.destroy()
 
         tk.Button(dialog_window, text="OK", command=on_ok).pack(pady=5)
-
-        dialog_window.wait_window()
-
-        # Retorna o comando digitado
+        self.root.wait_window(dialog_window)
         return command_var.get()
 
     def is_valid_command_name(self, command_name):
-        return "'" not in command_name and '"' not in command_name
+        return '"' not in command_name and "'" not in command_name
 
-    def run_command(self, command, command_frame):
-        if not command:
-            messagebox.showerror("Error", "The command is empty. Please enter a valid command.")
-            return
+    def run_command(self, command, frame):
+        if command.strip():
+            try:
+                process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                success = process.returncode == 0
+                result = stdout.decode().strip() or stderr.decode().strip()
 
-        try:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True)
-            if result.returncode == 0:
-                messagebox.showinfo("Success", f"Command executed successfully:\n{result.stdout}")
-            else:
-                messagebox.showerror("Error", f"Command failed with error:\n{result.stderr}")
+                if success:
+                    messagebox.showinfo("Success", result)
+                else:
+                    messagebox.showerror("Error", result)
 
-            self.update_command_history(command_frame, command, success=result.returncode == 0)
+                self.update_command_history(frame, success)
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred: {e}")
+        else:
+            messagebox.showwarning("Warning", "Command is empty.")
 
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to run command: {str(e)}")
+    def update_command_history(self, frame, success):
+        # Implementar a atualização do histórico do comando
+        pass
 
-    def update_command_history(self, command_frame, command, success=True):
-        for app_name, app_commands in self.commands.items():
-            for command_id, command_data in app_commands.items():
-                if command_data['command'] == command:
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    command_data['history'].append({
-                        'timestamp': timestamp,
-                        'success': success
-                    })
-
-                    command_data['history'] = command_data['history'][-100:]
-                    self.save_commands()
-                    return
-
-    def view_history(self, app_name, command_id):
-        command_data = self.commands.get(app_name, {}).get(command_id)
-        if command_data:
-            history_window = tk.Toplevel(self.root)
-            history_window.title(f"History for {command_data['name']}")
-            history_window.geometry("400x300")
-
-            history_text = scrolledtext.ScrolledText(history_window, wrap=tk.WORD)
-            history_text.pack(expand=True, fill="both")
-
-            for entry in command_data['history']:
-                timestamp = entry['timestamp']
-                success = "Success" if entry['success'] else "Failed"
-                history_text.insert(tk.END, f"{timestamp}: {success}\n")
-
-            rerun_button = tk.Button(history_window, text="Rerun Command", command=lambda: self.run_command(command_data['command'], None))
-            rerun_button.pack(pady=5)
-
-    def open_add_application_window(self):
-        app_name = simpledialog.askstring("Application Name", "Enter new application name:")
-        if app_name:
-            # Verifica se o nome da nova aplicação já existe, ignorando diferenças de maiúsculas e minúsculas
-            if app_name.lower() not in [key.lower() for key in self.commands.keys()]:
-                self.commands[app_name] = {}
+    def open_edit_application_window(self, app_name):
+        new_app_name = simpledialog.askstring("Edit Application", "Enter new application name:", initialvalue=app_name)
+        if new_app_name:
+            if new_app_name.lower() not in [key.lower() for key in self.commands.keys()] or new_app_name.lower() == app_name.lower():
+                self.commands[new_app_name] = self.commands.pop(app_name)
                 self.save_commands()
                 self.update_home_display()
             else:
-                messagebox.showwarning("Warning", "Application already exists.")
+                messagebox.showwarning("Warning", "Application with this name already exists.")
 
     def open_edit_command_window(self, app_name, command_id):
-        command_data = self.commands.get(app_name, {}).get(command_id)
+        command_data = self.commands.get(app_name, {}).get(command_id, {})
         if command_data:
-            new_command_name = simpledialog.askstring("Edit Command Name", "Enter new command name:", initialvalue=command_data['name'])
-            if new_command_name:
+            new_command_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=command_data['name'])
+            new_command = self.open_command_text_window() if new_command_name else command_data['command']
+
+            if new_command_name and new_command:
                 if not self.is_valid_command_name(new_command_name):
                     messagebox.showerror("Error", "Command name cannot contain single or double quotes.")
                     return
 
-                new_command = self.open_command_text_window()
-                if new_command:
-                    command_data['name'] = new_command_name
-                    command_data['command'] = new_command
-                    self.save_commands()
-                    self.update_home_display()
+                self.commands[app_name][command_id] = {
+                    'name': new_command_name,
+                    'command': new_command,
+                    'history': command_data['history']
+                }
+                self.save_commands()
+                self.update_home_display()
 
     def confirm_delete_application(self, app_name):
-        if messagebox.askyesno("Delete Application", f"Are you sure you want to delete the application '{app_name}'?"):
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the application '{app_name}'?"):
             del self.commands[app_name]
             self.save_commands()
             self.update_home_display()
 
     def confirm_delete_command(self, app_name, command_id):
-        command_data = self.commands.get(app_name, {}).get(command_id)
-        if command_data and messagebox.askyesno("Delete Command", f"Are you sure you want to delete the command '{command_data['name']}'?"):
-            del self.commands[app_name][command_id]
-            self.save_commands()
-            self.update_home_display()
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete this command?"):
+            if app_name in self.commands and command_id in self.commands[app_name]:
+                del self.commands[app_name][command_id]
+                if not self.commands[app_name]:  # Remove the application if it has no commands left
+                    del self.commands[app_name]
+                self.save_commands()
+                self.update_home_display()
 
     def add_tooltip(self, widget, text):
-        tooltip = tk.Toplevel(widget, bg="yellow", padx=5, pady=5)
-        tooltip.withdraw()
-        tooltip.overrideredirect(True)
-        tooltip_label = tk.Label(tooltip, text=text, bg="yellow")
-        tooltip_label.pack()
+        tooltip = tk.Label(self.root, text=text, bg="yellow", relief="solid", padx=5, pady=2)
+        tooltip.pack_forget()
 
-        def show_tooltip(event):
-            x = event.x_root + 10
-            y = event.y_root + 10
-            tooltip.geometry(f"+{x}+{y}")
-            tooltip.deiconify()
+        def on_enter(event):
+            x = event.x_root - self.root.winfo_rootx() + 10
+            y = event.y_root - self.root.winfo_rooty() + 10
+            tooltip.place(x=x, y=y)
 
-        def hide_tooltip(event):
-            tooltip.withdraw()
+        def on_leave(event):
+            tooltip.place_forget()
 
-        widget.bind("<Enter>", show_tooltip)
-        widget.bind("<Leave>", hide_tooltip)
+        widget.bind("<Enter>", on_enter)
+        widget.bind("<Leave>", on_leave)
 
-if __name__ == "__main__":
+    def quit_application(self):
+        self.root.quit()
+
+def main():
     root = tk.Tk()
     app = CommandApp(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
