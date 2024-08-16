@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox, scrolledtext, Menu
+from tkinter import simpledialog, messagebox, Menu
 import subprocess
 import json
 import os
@@ -157,9 +157,10 @@ class CommandApp:
         menu_bar = Menu(self.root)
         self.root.config(menu=menu_bar)
 
-        applications_menu = Menu(menu_bar, tearoff=0)
-        applications_menu.add_command(label="Add Application", command=self.open_add_application_window)
-        menu_bar.add_cascade(label="Applications", menu=applications_menu)
+        file_menu = Menu(menu_bar, tearoff=0)
+        file_menu.add_command(label="Add Application", command=self.open_add_application_window)
+        file_menu.add_command(label="Exit", command=self.quit_application)
+        menu_bar.add_cascade(label="File", menu=file_menu)
 
         help_menu = Menu(menu_bar, tearoff=0)
         help_menu.add_command(label="Help", command=self.open_help_window)
@@ -168,9 +169,6 @@ class CommandApp:
         about_menu = Menu(menu_bar, tearoff=0)
         about_menu.add_command(label="About", command=self.open_about_window)
         menu_bar.add_cascade(label="About", menu=about_menu)
-
-        self.quit_button = tk.Button(self.root, text="Sair", command=self.quit_application)
-        self.quit_button.pack(side=tk.RIGHT, padx=10, pady=10, anchor=tk.SE)
 
     def setup_home_frame(self):
         self.frame_home = tk.Frame(self.root)
@@ -279,7 +277,7 @@ class CommandApp:
         self.root.quit()
 
     def open_help_window(self):
-        help_text = ("1. To add an application, go to 'Applications' -> 'Add Application'.\n"
+        help_text = ("1. To add an application, go to 'File' -> 'Add Application'.\n"
                      "2. To add a command, click 'Add Cmd' under the application.\n"
                      "3. To edit a command, click 'Edit' next to the command.\n"
                      "4. To delete a command, click 'Delete' next to the command.\n"
