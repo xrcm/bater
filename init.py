@@ -266,22 +266,19 @@ class CommandApp:
         else:
             messagebox.showwarning("Warning", "Failed to delete command.")
 
-    def run_command(self, command):
-        success, result = self.command_manager.run_command(command)
-        if success:
-            messagebox.showinfo("Command Output", result)
-        else:
-            messagebox.showerror("Error", result)
-
     def quit_application(self):
         self.root.quit()
 
     def open_help_window(self):
-        help_text = ("1. To add an application, go to 'File' -> 'Add Application'.\n"
-                     "2. To add a command, click 'Add Cmd' under the application.\n"
-                     "3. To edit a command, click 'Edit' next to the command.\n"
-                     "4. To delete a command, click 'Delete' next to the command.\n"
-                     "5. To run a command, click 'Run' next to the command.\n")
+        help_text = (
+            "Help:\n\n"
+            "1. **Add Application**: Go to 'File' > 'Add Application' to add a new application.\n"
+            "2. **Add Command**: Click the 'Add Cmd' button within an application's frame to add a new command.\n"
+            "3. **View Command History**: Command history is maintained but not currently displayed.\n"
+            "4. **About**: Learn more about this application from 'About'.\n"
+            "5. **Exit**: Quit the application by going to 'File' > 'Exit'.\n\n"
+            "For more information or assistance, please contact support."
+        )
         messagebox.showinfo("Help", help_text)
 
     def open_about_window(self):
@@ -290,6 +287,39 @@ class CommandApp:
                       "Developed by Your Name\n"
                       "© 2024")
         messagebox.showinfo("About", about_text)
+
+    def run_command(self, command):
+        if command.strip():
+            self.root.config(cursor="wait")
+            self.root.update_idletasks()
+
+            def execute_command():
+                success, result = self.command_manager.run_command(command)
+                self.update_command_history(command, result, success)
+                self.root.after(0, self.show_result, result, success)
+                self.root.config(cursor="")
+                self.root.update_idletasks()
+
+            threading.Thread(target=execute_command, daemon=True).start()
+        else:
+            messagebox.showwarning("Warning", "Command is empty.")
+
+    def update_command_history(self, command, result, success):
+        """Atualiza o histórico do comando no JSON e salva."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for app_name, app_commands in self.command_manager.commands.items():
+            for command_id, command_data in app_commands.items():
+                if command_data['command'] == command:
+                    command_data['history'].append(f"{timestamp} - {'Success' if success else 'Error'}: {result}")
+                    self.command_manager.save_commands()
+                    return
+
+    def show_result(self, result, success):
+        """Mostra o resultado da execução do comando."""
+        if success:
+            messagebox.showinfo("Success", result)
+        else:
+            messagebox.showerror("Error", result)
 
 def main():
     root = tk.Tk()
