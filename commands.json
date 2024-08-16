@@ -27,20 +27,13 @@
                     "success": false
                 }
             ]
-        }
-    },
-    "App2": {
-        "uuid3": {
-            "name": "command3",
-            "command": "ping google.com",
-            "history": []
-        }
-    },
-    "calc": {
-        "27b984d1-5018-4ec3-b0a6-5c5eb41ce552": {
-            "name": "abrir",
+        },
+        "713f5b91-e6ec-4df8-ac47-95bcb3d767f3": {
+            "name": "calc",
             "command": "calc",
             "history": []
         }
-    }
+    },
+    "AAA": {},
+    "fdc": {}
 }
