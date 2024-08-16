@@ -7,7 +7,6 @@ import os
 import uuid
 import re
 
-
 class CommandApp:
     def __init__(self, root):
         self.root = root
@@ -92,8 +91,7 @@ class CommandApp:
             add_command_button.pack(pady=5, padx=5)
 
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data,
-                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
@@ -120,8 +118,7 @@ class CommandApp:
                 delete_command_button.pack(side=tk.LEFT, padx=5)
 
                 history_button = tk.Button(command_frame, text="History",
-                                           command=lambda cmd_id=command_id, app=app_name: self.show_command_history(
-                                               app, cmd_id))
+                                           command=lambda cmd_id=command_id, app=app_name: self.show_command_history(app, cmd_id))
                 history_button.pack(side=tk.LEFT, padx=5)
 
     def on_frame_home_inner_configure(self, event):
@@ -173,49 +170,42 @@ class CommandApp:
         messagebox.showinfo("Help", help_text)
 
     def open_about_window(self):
-        about_text = "BATER: Terminal Command Controller\nVersion 1.0\nCreated by Your Name"
+        about_text = (
+            "BATER Application\n\n"
+            "Version 1.0\n\n"
+            "Developed by Your Name.\n"
+            "This application allows you to manage and execute terminal commands.\n"
+        )
         messagebox.showinfo("About", about_text)
 
-    def open_variable_prompt(self, command_template):
-        def on_submit():
-            self.submit_variables(command_template)
-            prompt_window.destroy()
+    def open_variable_prompt(self, command_text):
+        def run_with_variables():
+            variables = {}
+            for var_name, var_value in variable_entries.items():
+                value = simpledialog.askstring("Variable Input", f"Enter value for {var_name}:", initialvalue=var_value)
+                if value:
+                    variables[var_name] = value
 
-        prompt_window = tk.Toplevel(self.root)
-        prompt_window.title("Enter Variables")
-        prompt_window.geometry("300x200")
+            command_to_run = command_text
+            for var_name, var_value in variables.items():
+                command_to_run = command_to_run.replace(f"${{{var_name}}}", var_value)
 
-        tk.Label(prompt_window, text="Enter values for the following placeholders:").pack(pady=10)
+            self.execute_command(command_to_run)
 
-        self.variables = {}
-        placeholders = self.extract_placeholders(command_template)
+        variable_entries = {}
+        for var_name in re.findall(r'\${(.*?)}', command_text):
+            variable_entries[var_name] = ""
 
-        for placeholder in placeholders:
-            tk.Label(prompt_window, text=f"{placeholder}:").pack(pady=5)
-            entry = tk.Entry(prompt_window)
-            entry.pack(pady=5)
-            self.variables[placeholder] = entry
-
-        tk.Button(prompt_window, text="Submit", command=on_submit).pack(pady=10)
-
-    def extract_placeholders(self, command):
-        return list(set(re.findall(r'{(\w+)}', command)))
-
-    def submit_variables(self, command_template):
-        command = command_template
-        for ph, entry in self.variables.items():
-            value = entry.get()
-            command = command.replace(f"{{{ph}}}", value)
-
-        messagebox.showinfo("Final Command", f"Executing: {command}")
-        self.execute_command(command)
+        if variable_entries:
+            run_with_variables()
+        else:
+            self.execute_command(command_text)
 
     def execute_command(self, command):
         def run_command():
             try:
-                result = subprocess.run(command, shell=True, capture_output=True, text=True)
-                self.root.after(0, lambda: messagebox.showinfo("Command Result",
-                                                               f"Command executed successfully!\n\nOutput:\n{result.stdout}"))
+                result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
+                self.root.after(0, lambda: messagebox.showinfo("Command Output", result.stdout))
                 self.command_manager.add_to_history(command, result.stdout)
             except Exception as e:
                 self.root.after(0, lambda: messagebox.showerror("Execution Error", str(e)))
@@ -228,8 +218,9 @@ class CommandApp:
             messagebox.showwarning("Warning", "Command not found.")
             return
 
+        # Garante que o histórico é uma lista de strings
         history = command.get('history', [])
-        history_text = "\n".join(history) if history else "No history available."
+        history_text = "\n".join(str(entry) for entry in history) if history else "No history available."
 
         history_window = tk.Toplevel(self.root)
         history_window.title("Command History")
@@ -240,7 +231,6 @@ class CommandApp:
         history_text_box.insert(tk.END, history_text)
         history_text_box.pack(pady=10, fill=tk.BOTH, expand=True)
         history_text_box.config(state=tk.DISABLED)
-
 
 class AddCommandWindow:
     def __init__(self, parent_app, app_name):
@@ -306,7 +296,6 @@ class AddCommandWindow:
         else:
             messagebox.showwarning("Warning", "Failed to add command. The command may already exist.")
 
-
 class CommandManager:
     def __init__(self):
         self.commands = {}
@@ -365,7 +354,6 @@ class CommandManager:
                     cmd_data['history'].append(output)
                     self.save_commands()
                     return
-
 
 if __name__ == "__main__":
     root = tk.Tk()
