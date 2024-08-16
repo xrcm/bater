@@ -7,8 +7,6 @@ import shutil
 from datetime import datetime
 import uuid
 import threading
-import time
-import requests
 
 class CommandManager:
     def __init__(self, json_file='commands.json'):
@@ -130,6 +128,7 @@ class CommandManager:
                 return False, str(e)
         return False, "Command is empty."
 
+
 class CommandApp:
     def __init__(self, root):
         self.root = root
@@ -154,19 +153,19 @@ class CommandApp:
         self.root.geometry(f'{width}x{height}+{x}+{y}')
 
     def create_menu_bar(self):
-        menu_bar = Menu(self.root)
+        menu_bar = tk.Menu(self.root)
         self.root.config(menu=menu_bar)
 
-        file_menu = Menu(menu_bar, tearoff=0)
+        file_menu = tk.Menu(menu_bar, tearoff=0)
         file_menu.add_command(label="Add Application", command=self.open_add_application_window)
         file_menu.add_command(label="Exit", command=self.quit_application)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
-        help_menu = Menu(menu_bar, tearoff=0)
+        help_menu = tk.Menu(menu_bar, tearoff=0)
         help_menu.add_command(label="Help", command=self.open_help_window)
         menu_bar.add_cascade(label="Help", menu=help_menu)
 
-        about_menu = Menu(menu_bar, tearoff=0)
+        about_menu = tk.Menu(menu_bar, tearoff=0)
         about_menu.add_command(label="About", command=self.open_about_window)
         menu_bar.add_cascade(label="About", menu=about_menu)
 
@@ -204,11 +203,13 @@ class CommandApp:
                 col = 0
                 row += 1
 
-            add_command_button = tk.Button(app_frame, text="Add Cmd", command=lambda app=app_name: self.open_add_command_window(app))
+            add_command_button = tk.Button(app_frame, text="Add Cmd",
+                                           command=lambda app=app_name: self.open_add_command_window(app))
             add_command_button.pack(pady=5, padx=5)
 
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data,
+                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
@@ -220,13 +221,18 @@ class CommandApp:
                 command_label = tk.Label(command_frame, text=command_name)
                 command_label.pack(side=tk.LEFT)
 
-                run_command_button = tk.Button(command_frame, text="Run", command=lambda cmd=command: self.run_command(cmd))
+                run_command_button = tk.Button(command_frame, text="Run",
+                                               command=lambda cmd=command: self.open_variable_prompt(cmd))
                 run_command_button.pack(side=tk.LEFT, padx=5)
 
-                edit_command_button = tk.Button(command_frame, text="Edit", command=lambda cmd_id=command_id, app=app_name: self.open_edit_command_window(app, cmd_id))
+                edit_command_button = tk.Button(command_frame, text="Edit", command=lambda cmd_id=command_id,
+                                                                                           app=app_name: self.open_edit_command_window(
+                    app, cmd_id))
                 edit_command_button.pack(side=tk.LEFT, padx=5)
 
-                delete_command_button = tk.Button(command_frame, text="Delete", command=lambda cmd_id=command_id, app=app_name: self.delete_command(app, cmd_id))
+                delete_command_button = tk.Button(command_frame, text="Delete",
+                                                  command=lambda cmd_id=command_id, app=app_name: self.delete_command(
+                                                      app, cmd_id))
                 delete_command_button.pack(side=tk.LEFT, padx=5)
 
     def on_frame_home_inner_configure(self, event):
@@ -254,8 +260,10 @@ class CommandApp:
             return
 
         new_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=command_data['name'])
-        new_command_text = simpledialog.askstring("Edit Command", "Enter new command text:", initialvalue=command_data['command'])
-        if new_name and new_command_text and self.command_manager.edit_command(app_name, command_id, new_name, new_command_text):
+        new_command_text = simpledialog.askstring("Edit Command", "Enter new command text:",
+                                                  initialvalue=command_data['command'])
+        if new_name and new_command_text and self.command_manager.edit_command(app_name, command_id, new_name,
+                                                                               new_command_text):
             self.update_home_display()
         else:
             messagebox.showwarning("Warning", "Failed to edit command or invalid input.")
@@ -272,11 +280,11 @@ class CommandApp:
     def open_help_window(self):
         help_text = (
             "Help:\n\n"
-            "1. **Add Application**: Go to 'File' > 'Add Application' to add a new application.\n"
-            "2. **Add Command**: Click the 'Add Cmd' button within an application's frame to add a new command.\n"
-            "3. **View Command History**: Command history is maintained but not currently displayed.\n"
-            "4. **About**: Learn more about this application from 'About'.\n"
-            "5. **Exit**: Quit the application by going to 'File' > 'Exit'.\n\n"
+            "1. **Add Application**: Go to 'Applications' > 'Add Application' or press Ctrl+A to add a new application.\n"
+            "2. **Add Command**: Click the 'Add Cmd' button within an application's frame to add a new command. You can also access this functionality from 'Applications' > 'Add Command'.\n"
+            "3. **View Command History**: Click the 'History' button next to a command to view its execution history.\n"
+            "4. **About**: Go to 'About' > 'About' or press Ctrl+B to learn more about this application.\n"
+            "5. **Exit**: Quit the application by going to 'Exit' or pressing Ctrl+Q.\n\n"
             "For more information or assistance, please contact support."
         )
         messagebox.showinfo("Help", help_text)
@@ -288,43 +296,103 @@ class CommandApp:
                       "© 2024")
         messagebox.showinfo("About", about_text)
 
-    def run_command(self, command):
-        if command.strip():
-            self.root.config(cursor="wait")
-            self.root.update_idletasks()
+    def open_variable_prompt(self, command_template):
+        # Criar uma nova janela para capturar as variáveis
+        variable_window = tk.Toplevel(self.root)
+        variable_window.title("Enter Command Variables")
 
-            def execute_command():
-                success, result = self.command_manager.run_command(command)
-                self.update_command_history(command, result, success)
-                self.root.after(0, self.show_result, result, success)
-                self.root.config(cursor="")
-                self.root.update_idletasks()
+        self.variables = {}  # Armazenar os valores das variáveis
 
-            threading.Thread(target=execute_command, daemon=True).start()
+        # Analisar placeholders no comando
+        placeholders = self.extract_placeholders(command_template)
+        variable_entries = {ph: 'text' for ph in placeholders}  # Aqui você pode ajustar os tipos de variáveis
+
+        for ph in placeholders:
+            tk.Label(variable_window, text=f"Enter value for {ph}:").pack()
+            entry = tk.Entry(variable_window)
+            entry.pack()
+            self.variables[ph] = entry
+
+        tk.Button(variable_window, text="Submit", command=lambda: self.submit_variables(command_template)).pack()
+
+    def extract_placeholders(self, command_template):
+        import re
+        return re.findall(r'\{(\w+)\}', command_template)
+
+    def submit_variables(self, command_template):
+        command = command_template
+        for ph, entry in self.variables.items():
+            value = entry.get()
+            command = command.replace(f"{{{ph}}}", value)
+
+        # Exibir comando final e execução
+        messagebox.showinfo("Final Command", f"Executing: {command}")
+        self.execute_command(command)
+
+    def execute_command(self, command):
+        def run_command():
+            try:
+                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                messagebox.showinfo("Command Result", f"Command executed successfully!\n\nOutput:\n{result.stdout}")
+            except subprocess.CalledProcessError as e:
+                messagebox.showerror("Error", f"Command failed with error:\n{e.stderr}")
+
+        threading.Thread(target=run_command).start()
+
+
+class CommandManager:
+    def __init__(self):
+        self.commands = {}
+        self.load_commands()
+
+    def load_commands(self):
+        if os.path.exists('commands.json'):
+            with open('commands.json', 'r') as f:
+                self.commands = json.load(f)
         else:
-            messagebox.showwarning("Warning", "Command is empty.")
+            self.commands = {}
 
-    def update_command_history(self, command, result, success):
-        """Atualiza o histórico do comando no JSON e salva."""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        for app_name, app_commands in self.command_manager.commands.items():
-            for command_id, command_data in app_commands.items():
-                if command_data['command'] == command:
-                    command_data['history'].append(f"{timestamp} - {'Success' if success else 'Error'}: {result}")
-                    self.command_manager.save_commands()
-                    return
+    def save_commands(self):
+        with open('commands.json', 'w') as f:
+            json.dump(self.commands, f, indent=4)
 
-    def show_result(self, result, success):
-        """Mostra o resultado da execução do comando."""
-        if success:
-            messagebox.showinfo("Success", result)
-        else:
-            messagebox.showerror("Error", result)
+    def add_application(self, app_name):
+        if app_name in self.commands:
+            return False
+        self.commands[app_name] = {}
+        self.save_commands()
+        return True
 
-def main():
+    def add_command(self, app_name, command_name, command_text):
+        if app_name not in self.commands:
+            return False
+        command_id = str(uuid.uuid4())
+        self.commands[app_name][command_id] = {
+            'name': command_name,
+            'command': command_text,
+            'history': []
+        }
+        self.save_commands()
+        return True
+
+    def edit_command(self, app_name, command_id, new_name, new_command_text):
+        if app_name not in self.commands or command_id not in self.commands[app_name]:
+            return False
+        self.commands[app_name][command_id]['name'] = new_name
+        self.commands[app_name][command_id]['command'] = new_command_text
+        self.save_commands()
+        return True
+
+    def delete_command(self, app_name, command_id):
+        if app_name not in self.commands or command_id not in self.commands[app_name]:
+            return False
+        del self.commands[app_name][command_id]
+        self.save_commands()
+        return True
+
+
+if __name__ == "__main__":
     root = tk.Tk()
     app = CommandApp(root)
     root.mainloop()
 
-if __name__ == "__main__":
-    main()
