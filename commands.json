@@ -1,30 +1,80 @@
 {
-    "App1": {
-        "7e31387c-4647-4477-a230-70c17970b0bb": {
-            "name": "siga",
-            "command": "calc (1)",
+    "curl": {
+        "8f8dc421-8589-4a9d-8dcd-36a0ffd8dac3": {
+            "name": "version",
+            "command": "curl --version",
             "history": [
-                "",
-                ""
+                {
+                    "timestamp": "2024-08-19 23:08:41",
+                    "type": "creation",
+                    "command": "----------------------------------------------------\n----------------------------------------------------\nCommand Created on: 2024-08-19 23:08:41\nCommand:\ncurl --version\n----------------------------------------------------\n----------------------------------------------------\n",
+                    "output": ""
+                },
+                {
+                    "timestamp": "2024-08-19 23:08:50",
+                    "type": "execution",
+                    "command": "Executed on: 2024-08-19 23:08:50\nCommand executed:\ncurl --version\nOutput:\n",
+                    "output": "curl 8.7.1 (Windows) libcurl/8.7.1 Schannel zlib/1.3 WinIDN\r\nRelease-Date: 2024-03-27\r\nProtocols: dict file ftp ftps http https imap imaps ipfs ipns mqtt pop3 pop3s smb smbs smtp smtps telnet tftp\r\nFeatures: alt-svc AsynchDNS HSTS HTTPS-proxy IDN IPv6 Kerberos Largefile libz NTLM SPNEGO SSL SSPI threadsafe Unicode UnixSockets"
+                },
+                {
+                    "timestamp": "2024-08-19 23:08:50",
+                    "type": "execution",
+                    "command": "Executed on: 2024-08-19 23:08:50\nCommand executed:\ncurl --version\nOutput:\n",
+                    "output": "curl 8.7.1 (Windows) libcurl/8.7.1 Schannel zlib/1.3 WinIDN\r\nRelease-Date: 2024-03-27\r\nProtocols: dict file ftp ftps http https imap imaps ipfs ipns mqtt pop3 pop3s smb smbs smtp smtps telnet tftp\r\nFeatures: alt-svc AsynchDNS HSTS HTTPS-proxy IDN IPv6 Kerberos Largefile libz NTLM SPNEGO SSL SSPI threadsafe Unicode UnixSockets"
+                },
+                {
+                    "timestamp": "2024-08-19 23:09:00",
+                    "type": "execution",
+                    "command": "Executed on: 2024-08-19 23:09:00\nCommand executed:\ncurl --version\nOutput:\n",
+                    "output": "curl 8.7.1 (Windows) libcurl/8.7.1 Schannel zlib/1.3 WinIDN\r\nRelease-Date: 2024-03-27\r\nProtocols: dict file ftp ftps http https imap imaps ipfs ipns mqtt pop3 pop3s smb smbs smtp smtps telnet tftp\r\nFeatures: alt-svc AsynchDNS HSTS HTTPS-proxy IDN IPv6 Kerberos Largefile libz NTLM SPNEGO SSL SSPI threadsafe Unicode UnixSockets"
+                },
+                {
+                    "timestamp": "2024-08-19 23:09:00",
+                    "type": "execution",
+                    "command": "Executed on: 2024-08-19 23:09:00\nCommand executed:\ncurl --version\nOutput:\n",
+                    "output": "curl 8.7.1 (Windows) libcurl/8.7.1 Schannel zlib/1.3 WinIDN\r\nRelease-Date: 2024-03-27\r\nProtocols: dict file ftp ftps http https imap imaps ipfs ipns mqtt pop3 pop3s smb smbs smtp smtps telnet tftp\r\nFeatures: alt-svc AsynchDNS HSTS HTTPS-proxy IDN IPv6 Kerberos Largefile libz NTLM SPNEGO SSL SSPI threadsafe Unicode UnixSockets"
+                }
             ]
         }
     },
-    "AAA": {},
-    "fdc": {},
-    "fodass": {},
-    "lala": {},
-    "aaaaaaa": {
-        "fcd8ac4d-ccb8-445e-8ab4-b24aab97906a": {
-            "name": "yay",
+    "calc": {
+        "97d0847c-d85d-46b6-a9dc-c70f0c4e03d8": {
+            "name": "start",
             "command": "calc",
-            "history": []
+            "history": [
+                {
+                    "timestamp": "2024-08-19 23:11:02",
+                    "type": "creation",
+                    "command": "----------------------------------------------------\n----------------------------------------------------\nCommand Created on: 2024-08-19 23:11:02\nCommand:\ncalc\n----------------------------------------------------\n----------------------------------------------------\n",
+                    "output": ""
+                }
+            ]
         }
     },
-    "curl": {
-        "58925bdf-9bd2-45b2-bc68-757c6daaf539": {
-            "name": "curl --version",
-            "command": "curl --version",
-            "history": []
+    "git": {
+        "af2a5124-4c2e-4697-944e-b601d3fa3aeb": {
+            "name": "version",
+            "command": "git --version",
+            "history": [
+                {
+                    "timestamp": "2024-08-19 23:11:36",
+                    "type": "creation",
+                    "command": "----------------------------------------------------\n----------------------------------------------------\nCommand Created on: 2024-08-19 23:11:36\nCommand:\ngit --version\n----------------------------------------------------\n----------------------------------------------------\n",
+                    "output": ""
+                },
+                {
+                    "timestamp": "2024-08-19 23:11:38",
+                    "type": "execution",
+                    "command": "Executed on: 2024-08-19 23:11:38\nCommand executed:\ngit --version\nOutput:\n",
+                    "output": "git version 2.45.1.windows.1"
+                },
+                {
+                    "timestamp": "2024-08-19 23:11:38",
+                    "type": "execution",
+                    "command": "Executed on: 2024-08-19 23:11:38\nCommand executed:\ngit --version\nOutput:\n",
+                    "output": "git version 2.45.1.windows.1"
+                }
+            ]
         }
     }
 }

@@ -62,35 +62,52 @@ class CommandManager:
                 'command': command_text,
                 'history': []
             }
-            self.add_command_history(app_name, command_id, "Command Created", "")  # Add initial history entry
+            self.add_command_history(app_name, command_id, command_text,
+                                     event_type="creation")  # Add initial history entry
             self.save_commands()
             return True
         return False
 
-    def add_command_history(self, app_name, command_id, command_text_in, output=""):
+    def add_command_history(self, app_name, command_id, command_text_in, output="", event_type="execution"):
         """Add a history entry to a specific command."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            command_text = sanitize_text(command_text_in)  # Sanitize the command text before saving
+            command_text = sanitize_text(command_text_in)
 
-            if command_text_in == "Command Created":
+            # Determine the structure of the history entry based on the event type
+            if event_type == "creation":
                 history_entry = {
-                    'timestamp': timestamp,
-                    'command': f"----------------------------------------------------\n"
+                    "timestamp": timestamp,
+                    "type": "creation",
+                    "command": f"----------------------------------------------------\n"
                                f"----------------------------------------------------\n"
                                f"Command Created on: {timestamp}\n"
                                f"Command:\n{command_text}\n"
                                f"----------------------------------------------------\n"
                                f"----------------------------------------------------\n",
-                    'output': output  # This will be an empty string initially
+                    "output": ""
                 }
-            else:
+            elif event_type == "edit":
                 history_entry = {
-                    'timestamp': timestamp,
-                    'command': f"Executed on: {timestamp}\nCommand executed:\n{command_text}\nOutput:\n",
-                    'output': sanitize_text(output)
+                    "timestamp": timestamp,
+                    "type": "edit",
+                    "command": command_text,
+                    "output": f"----------------------------------------------------\n"
+                              f"----------------------------------------------------\n"
+                              f"Command Edited on: {timestamp}\n"
+                              f"New Command:\n{command_text}\n"
+                              f"----------------------------------------------------\n"
+                              f"----------------------------------------------------\n"
+                }
+            else:  # Default to "execution"
+                history_entry = {
+                    "timestamp": timestamp,
+                    "type": "execution",
+                    "command": f"Executed on: {timestamp}\nCommand executed:\n{command_text}\nOutput:\n",
+                    "output": sanitize_text(output)
                 }
 
+            # Append the history entry to the command's history
             history = self.commands[app_name][command_id]['history']
             history.append(history_entry)
             if len(history) > 1000:
@@ -119,14 +136,40 @@ class CommandManager:
     def edit_command(self, app_name, command_id, new_name, new_command_text):
         """Edit an existing command's name and text."""
         if app_name in self.commands and command_id in self.commands[app_name]:
-            original_command = self.commands[app_name][command_id]['command']
+            command_data = self.commands[app_name][command_id]
+            old_name = command_data['name']
+            old_command_text = command_data['command']
+
+            # Update the command with the new details
             self.commands[app_name][command_id] = {
                 'name': new_name,
                 'command': new_command_text,
-                'history': self.commands[app_name][command_id]['history']
+                'history': command_data['history']
             }
-            edit_details = f"Original Command:\n{original_command}\n\nUpdated Command:\n{new_command_text}"
-            self.add_command_history(app_name, command_id, "Command Edited", edit_details)
+
+            # Add a history entry for the edit
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            history_entry = {
+                "timestamp": timestamp,
+                "type": "edit",
+                "command": f"----------------------------------------------------\n"
+                           f"----------------------------------------------------\n"
+                           f"Command Edited on: {timestamp}\n"
+                           f"Old Command Name:\n{old_name}\n"
+                           f"Old Command:\n{old_command_text}\n"
+                           f"New Command Name:\n{new_name}\n"
+                           f"New Command:\n{new_command_text}\n"
+                           f"----------------------------------------------------\n"
+                           f"----------------------------------------------------\n",
+                "output": ""
+            }
+            command_data['history'].append(history_entry)
+
+            # Keep only the last 1000 records if necessary
+            if len(command_data['history']) > 1000:
+                command_data['history'].pop(0)
+
+            # Save the updated commands to the JSON file
             self.save_commands()
             return True
         return False
@@ -235,14 +278,15 @@ class CommandApp(wx.Frame):
         self.panel.SetSizer(self.sizer)
 
     def create_menu_bar(self):
-        """Create the main menu bar with File, Help, Restart, and About menus."""
+        """Create the main menu bar with File, Help, and About menus."""
         menu_bar = wx.MenuBar()
 
         file_menu = wx.Menu()
         add_app = file_menu.Append(wx.ID_ANY, "Add Application")
-        restart_app = file_menu.Append(wx.ID_ANY, "Restart Application")
+        file_menu.AppendSeparator()  # Add a separator before the exit and restart options
+        restart_app = file_menu.Append(wx.ID_ANY, "Restart")
         exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
-        file_menu.AppendSeparator()
+
         help_item = file_menu.Append(wx.ID_ANY, "Help")
         about_item = file_menu.Append(wx.ID_ABOUT, "About")
         menu_bar.Append(file_menu, "File")
@@ -414,7 +458,9 @@ class CommandApp(wx.Frame):
             wx.MessageBox("No history available for this command.", "History", wx.OK | wx.ICON_INFORMATION)
             return
 
-        dialog = wx.Dialog(self, title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}", size=(600, 400))
+        dialog = wx.Dialog(self,
+                           title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}",
+                           size=(600, 400))
         vbox = wx.BoxSizer(wx.VERTICAL)
 
         history_text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -422,12 +468,17 @@ class CommandApp(wx.Frame):
         for entry in reversed(history[-1000:]):
             timestamp = entry.get('timestamp', 'Unknown time')
             command = entry.get('command', 'Unknown command')
-            output = entry.get('output', 'No output')
+            output = entry.get('output', '')
 
             history_text.AppendText("----------------------------------------------------\n")
-            history_text.AppendText(f"Executed on: {timestamp}\n")
-            history_text.AppendText(f"Command executed:\n{command}\n")
-            history_text.AppendText(f"Output:\n{output}\n")
+            if entry['type'] == "creation":
+                history_text.AppendText(f"Command Created on: {timestamp}\n{command}\n")
+            elif entry['type'] == "edit":
+                history_text.AppendText(f"Command Edited on: {timestamp}\n{command}\n")
+            else:  # execution
+                history_text.AppendText(f"Executed on: {timestamp}\n{command}\n")
+                if output:
+                    history_text.AppendText(f"Output:\n{output}\n")
             history_text.AppendText("----------------------------------------------------\n\n")
 
         vbox.Add(history_text, 1, wx.ALL | wx.EXPAND, 10)
