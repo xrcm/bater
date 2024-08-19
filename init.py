@@ -6,6 +6,9 @@ import json
 import os
 import uuid
 import re
+import time
+import platform
+
 
 class CommandApp:
     def __init__(self, root):
@@ -91,7 +94,8 @@ class CommandApp:
             add_command_button.pack(pady=5, padx=5)
 
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data,
+                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
@@ -118,7 +122,8 @@ class CommandApp:
                 delete_command_button.pack(side=tk.LEFT, padx=5)
 
                 history_button = tk.Button(command_frame, text="History",
-                                           command=lambda cmd_id=command_id, app=app_name: self.show_command_history(app, cmd_id))
+                                           command=lambda cmd_id=command_id, app=app_name: self.show_command_history(
+                                               app, cmd_id))
                 history_button.pack(side=tk.LEFT, padx=5)
 
     def on_frame_home_inner_configure(self, event):
@@ -204,9 +209,15 @@ class CommandApp:
     def execute_command(self, command):
         def run_command():
             try:
-                result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
+                # Verifica o SO e ajusta o comando se necessário
+                if platform.system() == 'Windows':
+                    result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
+                else:
+                    result = subprocess.run(command, shell=True, executable='/bin/bash', text=True, capture_output=True,
+                                            check=True)
+
                 self.root.after(0, lambda: messagebox.showinfo("Command Output", result.stdout))
-                self.command_manager.add_to_history(command, result.stdout)
+                self.command_manager.add_to_history(command, result.stdout, result.stderr, result.returncode)
             except Exception as e:
                 self.root.after(0, lambda: messagebox.showerror("Execution Error", str(e)))
 
@@ -347,13 +358,18 @@ class CommandManager:
         self.save_commands()
         return True
 
-    def add_to_history(self, command, output):
+    def add_to_history(self, command, stdout, stderr, returncode):
         for app, commands in self.commands.items():
             for cmd_id, cmd_data in commands.items():
                 if cmd_data['command'] == command:
-                    cmd_data['history'].append(output)
+                    cmd_data['history'].append({
+                        'stdout': stdout,
+                        'stderr': stderr,
+                        'returncode': returncode
+                    })
                     self.save_commands()
                     return
+
 
 if __name__ == "__main__":
     root = tk.Tk()
