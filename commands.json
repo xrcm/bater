@@ -7,7 +7,13 @@
                 {
                     "timestamp": "2024-08-14 17:37:57",
                     "success": true
-                }
+                },
+                "Hello World\n",
+                "Hello World\n",
+                "Hello World\n",
+                "Hello World\n",
+                "Hello World\n",
+                "Hello World\n"
             ]
         },
         "uuid2": {
@@ -32,8 +38,17 @@
             "name": "calc",
             "command": "calc",
             "history": []
+        },
+        "7e31387c-4647-4477-a230-70c17970b0bb": {
+            "name": "siga",
+            "command": "calc (1)",
+            "history": [
+                "",
+                ""
+            ]
         }
     },
     "AAA": {},
-    "fdc": {}
+    "fdc": {},
+    "fodass": {}
 }
