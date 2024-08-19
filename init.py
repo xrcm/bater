@@ -278,26 +278,25 @@ class CommandApp(wx.Frame):
         self.panel.SetSizer(self.sizer)
 
     def create_menu_bar(self):
-        """Create the main menu bar with File, Help, and About menus."""
+        """Create the main menu bar with File, Help, Restart, and About menus."""
         menu_bar = wx.MenuBar()
 
         file_menu = wx.Menu()
         add_app = file_menu.Append(wx.ID_ANY, "Add Application")
-        file_menu.AppendSeparator()  # Add a separator before the exit and restart options
-        restart_app = file_menu.Append(wx.ID_ANY, "Restart")
-        exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
-
         help_item = file_menu.Append(wx.ID_ANY, "Help")
         about_item = file_menu.Append(wx.ID_ABOUT, "About")
+        file_menu.AppendSeparator()
+        exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
+        restart_app = file_menu.Append(wx.ID_ANY, "Restart")
         menu_bar.Append(file_menu, "File")
 
         self.SetMenuBar(menu_bar)
 
         self.Bind(wx.EVT_MENU, self.open_add_application_window, add_app)
-        self.Bind(wx.EVT_MENU, self.restart_application, restart_app)
-        self.Bind(wx.EVT_MENU, self.quit_application, exit_app)
         self.Bind(wx.EVT_MENU, self.open_help_window, help_item)
         self.Bind(wx.EVT_MENU, self.open_about_window, about_item)
+        self.Bind(wx.EVT_MENU, self.quit_application, exit_app)
+        self.Bind(wx.EVT_MENU, self.restart_application, restart_app)
 
     def open_add_application_window(self, event=None):
         """Open a dialog to add a new application."""
@@ -387,8 +386,8 @@ class CommandApp(wx.Frame):
             self.update_home_display()
             dialog.Destroy()
 
-    def execute_command(self, app_name, command_id, command):
-        """Execute a command, with a warning if it's potentially dangerous."""
+    def execute_command(self, app_name, command_id, command, hide_output):
+        """Execute a command, with an option to hide output."""
         if is_dangerous_command(command):
             wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command",
                           wx.OK | wx.ICON_WARNING)
@@ -400,7 +399,7 @@ class CommandApp(wx.Frame):
 
             self.command_manager.add_command_history(app_name, command_id, command, result)
 
-            if result:
+            if not hide_output and result:
                 wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
 
         CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
@@ -434,7 +433,7 @@ class CommandApp(wx.Frame):
             "6. **View History**: Click 'History' next to a command to see its past executions.\n\n"
             "7. **Edit Application**: Use the 'Edit' button to modify the name of an application.\n\n"
             "8. **Delete Application**: Use the 'Delete' button to remove an entire application and its commands.\n\n"
-            "9. **Restart Application**: Use 'File > Restart Application' to restart the application.\n\n"
+            "9. **Restart Application**: Use 'File > Restart' to restart the application.\n\n"
             "10. **Exit**: Use 'File > Exit' to quit the application.\n\n"
             "For further assistance, refer to the documentation or contact support."
         )
@@ -444,8 +443,15 @@ class CommandApp(wx.Frame):
         """Restart the application."""
         self.Close()
         wx.GetApp().ExitMainLoop()
+
+        # Re-launch the application
         python = sys.executable
         os.execl(python, python, *sys.argv)
+
+    def bring_to_front(self):
+        """Bring the application window to the front and give it focus."""
+        self.Raise()
+        self.SetFocus()
 
     def quit_application(self, event):
         """Quit the application."""
@@ -521,8 +527,11 @@ class CommandApp(wx.Frame):
                 command_label = wx.StaticText(command_panel, label=command_name)
                 command_sizer.Add(command_label, 1, wx.ALL | wx.EXPAND, 5)
 
+                run_checkbox = wx.CheckBox(command_panel, label="Hide Output")
+                command_sizer.Add(run_checkbox, 0, wx.ALL, 5)
+
                 run_button = wx.Button(command_panel, label="Run")
-                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd))
+                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd, run_checkbox.GetValue()))
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
