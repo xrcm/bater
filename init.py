@@ -61,11 +61,17 @@ class CommandManager:
             return True
         return False
 
-    def add_command_history(self, app_name, command_id, entry):
+    def add_command_history(self, app_name, command_id, command_text, output):
         """Add a history entry to a specific command."""
         if app_name in self.commands and command_id in self.commands[app_name]:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            history_entry = {
+                'timestamp': timestamp,
+                'command': command_text,
+                'output': output
+            }
             history = self.commands[app_name][command_id]['history']
-            history.append(entry)
+            history.append(history_entry)
             if len(history) > 1000:
                 history.pop(0)  # Keep only the last 1000 records
             self.save_commands()
@@ -146,16 +152,15 @@ class CommandManager:
         """Load commands from the JSON file."""
         if os.path.exists(self.json_file):
             try:
-                with open(self.json_file, 'r') as file:
-                    file_content = file.read().strip()
-                    if not file_content:
-                        return {}
-                    data = json.loads(file_content)
-                    if isinstance(data, dict):
-                        self.validate_commands_data(data)
-                        return data
-                    else:
-                        raise ValueError("Invalid data format")
+                file_content = open(self.json_file, 'r').read().strip()
+                if not file_content:
+                    return {}
+                data = json.loads(file_content)
+                if isinstance(data, dict):
+                    self.validate_commands_data(data)
+                    return data
+                else:
+                    raise ValueError("Invalid data format")
             except (json.JSONDecodeError, ValueError) as e:
                 logging.error(f"Error loading JSON: {e}")
                 self.handle_invalid_json()
@@ -360,14 +365,13 @@ class CommandApp(wx.Frame):
 
         history_text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
         for entry in history[-1000:]:
-            if isinstance(entry, dict):
-                # Handle case where history is stored as a dictionary
-                timestamp = entry.get('timestamp', 'Unknown time')
-                result = entry.get('result', 'No result')
-                history_text.AppendText(f"Executed on: {timestamp}\nResult: {result}\n\n")
-            else:
-                # Handle case where history is stored as a string
-                history_text.AppendText(f"Executed command result: {entry}\n\n")
+            timestamp = entry.get('timestamp', 'Unknown time')
+            command = entry.get('command', 'Unknown command')
+            output = entry.get('output', 'No output')
+
+            history_text.AppendText(f"Executed on: {timestamp}\n")
+            history_text.AppendText(f"Command executed:\n{command}\n")
+            history_text.AppendText(f"Output:\n{output}\n\n")
 
         vbox.Add(history_text, 1, wx.ALL | wx.EXPAND, 10)
         close_button = wx.Button(dialog, label="Close")
@@ -451,8 +455,7 @@ class CommandApp(wx.Frame):
 
             # Create the command entries under the app section
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data,
-                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
