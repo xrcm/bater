@@ -10,6 +10,7 @@ import threading
 import logging
 from logging.handlers import RotatingFileHandler
 import shlex
+import sys  # Para o reinício da aplicação
 
 # Configure logging with rotation to avoid large log files.
 handler = RotatingFileHandler('command_app.log', maxBytes=10000, backupCount=3)
@@ -192,15 +193,19 @@ class CommandExecutor(threading.Thread):
     Class responsible for executing shell commands in a separate thread to avoid freezing the UI.
     """
 
-    def __init__(self, command, callback):
+    def __init__(self, command, callback, app_name, command_id, command_manager):
         """Initialize the thread with a command and a callback function."""
         super().__init__()
         self.command = command
         self.callback = callback
+        self.app_name = app_name
+        self.command_id = command_id
+        self.command_manager = command_manager
 
     def run(self):
         """Run the command and return the result to the callback."""
         success, result = self.run_command(self.command)
+        self.command_manager.add_command_history(self.app_name, self.command_id, self.command, result)
         wx.CallAfter(self.callback, success, result)
 
     @staticmethod
@@ -241,21 +246,22 @@ class CommandApp(wx.Frame):
         self.panel.SetSizer(self.sizer)
 
     def create_menu_bar(self):
-        """Create the main menu bar with File, Help, and About menus."""
+        """Create the main menu bar with File, Help, Restart, and About menus."""
         menu_bar = wx.MenuBar()
 
         file_menu = wx.Menu()
         add_app = file_menu.Append(wx.ID_ANY, "Add Application")
+        restart_app = file_menu.Append(wx.ID_ANY, "Restart Application")
+        exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
         file_menu.AppendSeparator()
         help_item = file_menu.Append(wx.ID_ANY, "Help")
         about_item = file_menu.Append(wx.ID_ABOUT, "About")
-        file_menu.AppendSeparator()
-        exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
         menu_bar.Append(file_menu, "File")
 
         self.SetMenuBar(menu_bar)
 
         self.Bind(wx.EVT_MENU, self.open_add_application_window, add_app)
+        self.Bind(wx.EVT_MENU, self.restart_application, restart_app)
         self.Bind(wx.EVT_MENU, self.quit_application, exit_app)
         self.Bind(wx.EVT_MENU, self.open_help_window, help_item)
         self.Bind(wx.EVT_MENU, self.open_about_window, about_item)
@@ -334,7 +340,7 @@ class CommandApp(wx.Frame):
         button_sizer.Add(save_button, 0, wx.ALL, 5)
 
         execute_button = wx.Button(dialog, label="Execute")
-        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(command_entry.GetValue()))
+        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue()))
         button_sizer.Add(execute_button, 0, wx.ALL, 5)
 
         close_button = wx.Button(dialog, label="Close")
@@ -381,7 +387,7 @@ class CommandApp(wx.Frame):
         dialog.SetSizer(vbox)
         dialog.ShowModal()
 
-    def execute_command(self, command):
+    def execute_command(self, app_name, command_id, command):
         """Execute a command, with a warning if it's potentially dangerous."""
         if is_dangerous_command(command):
             wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command", wx.OK | wx.ICON_WARNING)
@@ -392,8 +398,9 @@ class CommandApp(wx.Frame):
                 wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
             else:
                 wx.MessageBox(result, "Command Error", wx.OK | wx.ICON_ERROR)
+            self.update_home_display()  # Update display to enable history button
 
-        CommandExecutor(command, on_command_finished).start()
+        CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
 
     def delete_command(self, app_name, command_id):
         """Delete a specific command from an application."""
@@ -424,10 +431,18 @@ class CommandApp(wx.Frame):
             "6. **View History**: Click 'History' next to a command to see its past executions.\n\n"
             "7. **Edit Application**: Use the 'Edit' button to modify the name of an application.\n\n"
             "8. **Delete Application**: Use the 'Delete' button to remove an entire application and its commands.\n\n"
-            "9. **Exit**: Use 'File > Exit' to quit the application.\n\n"
+            "9. **Restart Application**: Use 'File > Restart Application' to restart the application.\n\n"
+            "10. **Exit**: Use 'File > Exit' to quit the application.\n\n"
             "For further assistance, refer to the documentation or contact support."
         )
         wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+
+    def restart_application(self, event):
+        """Restart the application."""
+        self.Close()
+        wx.GetApp().ExitMainLoop()  # Exit the wx application loop
+        python = sys.executable
+        os.execl(python, python, *sys.argv)  # Restart the application
 
     def quit_application(self, event):
         """Quit the application."""
@@ -468,7 +483,7 @@ class CommandApp(wx.Frame):
                 command_sizer.Add(command_label, 1, wx.ALL | wx.EXPAND, 5)
 
                 run_button = wx.Button(command_panel, label="Run")
-                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(cmd))
+                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd))
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
