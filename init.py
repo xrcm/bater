@@ -11,7 +11,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import shlex
 import re
-import sys  # For application restart
+import sys
 
 # Configure logging with rotation to avoid large log files.
 handler = RotatingFileHandler('command_app.log', maxBytes=10000, backupCount=3)
@@ -36,9 +36,7 @@ def sanitize_text(output):
     return sanitized_output
 
 class CommandManager:
-    """
-    Class responsible for managing the storage, loading, and saving of commands in a JSON file.
-    """
+    """Class responsible for managing the storage, loading, and saving of commands in a JSON file."""
 
     def __init__(self, json_file='commands.json'):
         """Initialize the CommandManager with a specified JSON file."""
@@ -62,8 +60,7 @@ class CommandManager:
                 'command': command_text,
                 'history': []
             }
-            self.add_command_history(app_name, command_id, command_text,
-                                     event_type="creation")  # Add initial history entry
+            self.add_command_history(app_name, command_id, command_text, event_type="creation")
             self.save_commands()
             return True
         return False
@@ -74,15 +71,13 @@ class CommandManager:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             command_text = sanitize_text(command_text_in)
 
-            # Determine the structure of the history entry based on the event type
             if event_type == "creation":
                 history_entry = {
                     "timestamp": timestamp,
                     "type": "creation",
                     "command": f"----------------------------------------------------\n"
                                f"----------------------------------------------------\n"
-                               f"Command Created on: {timestamp}\n"
-                               f"Command:\n{command_text}\n"
+                               f"{command_text}"
                                f"----------------------------------------------------\n"
                                f"----------------------------------------------------\n",
                     "output": ""
@@ -107,11 +102,10 @@ class CommandManager:
                     "output": sanitize_text(output)
                 }
 
-            # Append the history entry to the command's history
             history = self.commands[app_name][command_id]['history']
             history.append(history_entry)
             if len(history) > 1000:
-                history.pop(0)  # Keep only the last 1000 records
+                history.pop(0)
             self.save_commands()
 
     def create_new_json_file(self):
@@ -140,14 +134,12 @@ class CommandManager:
             old_name = command_data['name']
             old_command_text = command_data['command']
 
-            # Update the command with the new details
             self.commands[app_name][command_id] = {
                 'name': new_name,
                 'command': new_command_text,
                 'history': command_data['history']
             }
 
-            # Add a history entry for the edit
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             history_entry = {
                 "timestamp": timestamp,
@@ -165,11 +157,9 @@ class CommandManager:
             }
             command_data['history'].append(history_entry)
 
-            # Keep only the last 1000 records if necessary
             if len(command_data['history']) > 1000:
                 command_data['history'].pop(0)
 
-            # Save the updated commands to the JSON file
             self.save_commands()
             return True
         return False
@@ -255,9 +245,7 @@ class CommandManager:
                     raise ValueError("Invalid command structure.")
 
 class CommandApp(wx.Frame):
-    """
-    The main application class responsible for the UI and user interaction.
-    """
+    """The main application class responsible for the UI and user interaction."""
 
     def __init__(self, parent, title):
         """Initialize the main application window and its components."""
@@ -274,7 +262,7 @@ class CommandApp(wx.Frame):
         self.sizer = wx.BoxSizer(wx.VERTICAL)
 
         self.create_menu_bar()
-        self.update_home_display()  # Directly update home display instead of a separate setup function
+        self.update_home_display()
         self.panel.SetSizer(self.sizer)
 
     def create_menu_bar(self):
@@ -282,14 +270,16 @@ class CommandApp(wx.Frame):
         menu_bar = wx.MenuBar()
 
         file_menu = wx.Menu()
-        add_app = file_menu.Append(wx.ID_ANY, "Add Application")
-        help_item = file_menu.Append(wx.ID_ANY, "Help")
         about_item = file_menu.Append(wx.ID_ABOUT, "About")
+        file_menu.AppendSeparator()
+        add_app = file_menu.Append(wx.ID_ANY, "Add APP")
+        help_item = file_menu.Append(wx.ID_ANY, "Help")
+
         file_menu.AppendSeparator()
         exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
         restart_app = file_menu.Append(wx.ID_ANY, "Restart")
-        menu_bar.Append(file_menu, "File")
 
+        menu_bar.Append(file_menu, "BATER")
         self.SetMenuBar(menu_bar)
 
         self.Bind(wx.EVT_MENU, self.open_add_application_window, add_app)
@@ -319,6 +309,34 @@ class CommandApp(wx.Frame):
                     self.update_home_display()
                 else:
                     wx.MessageBox(f"Failed to add command '{command_name}' to application '{app_name}'.", "Warning", wx.OK | wx.ICON_WARNING)
+
+    def open_help_window(self, event):
+        """Open the Help window with usage instructions."""
+        help_text = (
+            "Help:\n\n"
+            "1. **Add Application**: Use 'File > Add Application' to add a new application.\n\n"
+            "2. **Add Command**: Click 'Add Cmd' under an application's frame to add a new command.\n\n"
+            "3. **Edit Command**: Use the 'Edit' button next to a command to modify it.\n\n"
+            "4. **Delete Command**: Use the 'Delete' button to remove a command.\n\n"
+            "5. **Run Command**: Click 'Run' to execute a command.\n\n"
+            "6. **View History**: Click 'History' next to a command to see its past executions.\n\n"
+            "7. **Edit Application**: Use the 'Edit' button to modify the name of an application.\n\n"
+            "8. **Delete Application**: Use the 'Delete' button to remove an entire application and its commands.\n\n"
+            "9. **Restart Application**: Use 'File > Restart Application' to restart the application.\n\n"
+            "10. **Exit**: Use 'File > Exit' to quit the application.\n\n"
+            "For further assistance, refer to the documentation or contact support."
+        )
+        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
+
+    def open_about_window(self, event):
+        """Open the About window with application details."""
+        about_text = (
+            "BATER: Terminal Command Controller\n"
+            "Version 1.0\n"
+            "Developed by Rafael Martins\n"
+            "© 2024"
+        )
+        wx.MessageBox(about_text, "About", wx.OK | wx.ICON_INFORMATION)
 
     def edit_application_name(self, app_name):
         """Edit the name of the application."""
@@ -386,8 +404,8 @@ class CommandApp(wx.Frame):
             self.update_home_display()
             dialog.Destroy()
 
-    def execute_command(self, app_name, command_id, command, hide_output):
-        """Execute a command, with an option to hide output."""
+    def execute_command(self, app_name, command_id, command):
+        """Execute a command, with a warning if it's potentially dangerous."""
         if is_dangerous_command(command):
             wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command",
                           wx.OK | wx.ICON_WARNING)
@@ -399,7 +417,7 @@ class CommandApp(wx.Frame):
 
             self.command_manager.add_command_history(app_name, command_id, command, result)
 
-            if not hide_output and result:
+            if result:
                 wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
 
         CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
@@ -411,34 +429,6 @@ class CommandApp(wx.Frame):
         else:
             wx.MessageBox("Failed to delete command.", "Warning", wx.OK | wx.ICON_WARNING)
 
-    def open_about_window(self, event):
-        """Open the About window with application details."""
-        about_text = (
-            "BATER: Terminal Command Controller\n"
-            "Version 1.0\n"
-            "Developed by Rafael Martins\n"
-            "© 2024"
-        )
-        wx.MessageBox(about_text, "About", wx.OK | wx.ICON_INFORMATION)
-
-    def open_help_window(self, event):
-        """Open the Help window with usage instructions."""
-        help_text = (
-            "Help:\n\n"
-            "1. **Add Application**: Use 'File > Add Application' to add a new application.\n\n"
-            "2. **Add Command**: Click 'Add Cmd' under an application's frame to add a new command.\n\n"
-            "3. **Edit Command**: Use the 'Edit' button next to a command to modify it.\n\n"
-            "4. **Delete Command**: Use the 'Delete' button to remove a command.\n\n"
-            "5. **Run Command**: Click 'Run' to execute a command.\n\n"
-            "6. **View History**: Click 'History' next to a command to see its past executions.\n\n"
-            "7. **Edit Application**: Use the 'Edit' button to modify the name of an application.\n\n"
-            "8. **Delete Application**: Use the 'Delete' button to remove an entire application and its commands.\n\n"
-            "9. **Restart Application**: Use 'File > Restart' to restart the application.\n\n"
-            "10. **Exit**: Use 'File > Exit' to quit the application.\n\n"
-            "For further assistance, refer to the documentation or contact support."
-        )
-        wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
-
     def restart_application(self, event):
         """Restart the application."""
         self.Close()
@@ -448,10 +438,19 @@ class CommandApp(wx.Frame):
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
+        # Use wx.CallAfter to bring the application to the front after it restarts
+        wx.CallAfter(self.bring_to_front)
+
     def bring_to_front(self):
         """Bring the application window to the front and give it focus."""
-        self.Raise()
-        self.SetFocus()
+        if sys.platform == 'win32':
+            import ctypes
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            self.Show(True)
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        else:
+            self.Raise()
+            self.SetFocus()
 
     def quit_application(self, event):
         """Quit the application."""
@@ -464,9 +463,7 @@ class CommandApp(wx.Frame):
             wx.MessageBox("No history available for this command.", "History", wx.OK | wx.ICON_INFORMATION)
             return
 
-        dialog = wx.Dialog(self,
-                           title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}",
-                           size=(600, 400))
+        dialog = wx.Dialog(self, title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}", size=(600, 400))
         vbox = wx.BoxSizer(wx.VERTICAL)
 
         history_text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -499,10 +496,7 @@ class CommandApp(wx.Frame):
         """Update the home display dynamically based on the window size."""
         self.sizer.Clear(True)
         num_columns = 2
-        column_width = 300
 
-        row = 0
-        col = 0
         flex_sizer = wx.FlexGridSizer(cols=num_columns, hgap=10, vgap=10)
         flex_sizer.AddGrowableCol(0, 1)
         flex_sizer.AddGrowableCol(1, 1)
@@ -527,11 +521,8 @@ class CommandApp(wx.Frame):
                 command_label = wx.StaticText(command_panel, label=command_name)
                 command_sizer.Add(command_label, 1, wx.ALL | wx.EXPAND, 5)
 
-                run_checkbox = wx.CheckBox(command_panel, label="Hide Output")
-                command_sizer.Add(run_checkbox, 0, wx.ALL, 5)
-
                 run_button = wx.Button(command_panel, label="Run")
-                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd, run_checkbox.GetValue()))
+                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd))
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
@@ -578,19 +569,13 @@ class CommandApp(wx.Frame):
             app_sizer.Add(label_panel, 0, wx.ALL | wx.EXPAND, 5)
 
             flex_sizer.Add(app_sizer, 1, wx.ALL | wx.EXPAND, 10)
-            col += 1
-            if col >= num_columns:
-                col = 0
-                row += 1
 
         self.sizer.Add(flex_sizer, 1, wx.EXPAND | wx.ALL, 10)
         self.panel.SetupScrolling(scrollToTop=False)
         self.Layout()
 
 class CommandExecutor(threading.Thread):
-    """
-    Class responsible for executing shell commands in a separate thread to avoid freezing the UI.
-    """
+    """Class responsible for executing shell commands in a separate thread to avoid freezing the UI."""
 
     def __init__(self, command, callback, app_name, command_id, command_manager):
         """Initialize the thread with a command and a callback function."""
