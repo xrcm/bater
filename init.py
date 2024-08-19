@@ -44,7 +44,6 @@ class CommandManager:
                     raise ValueError("Invalid command structure.")
 
     def save_commands(self):
-        """Salva os comandos atuais no arquivo JSON."""
         try:
             with open(self.json_file, 'w') as file:
                 json.dump(self.commands, file, indent=4)
@@ -249,14 +248,26 @@ class CommandApp:
                 app_frame = tk.LabelFrame(self.frame_home_inner, text=app_name, padx=10, pady=10, bg="#ffffff")
                 app_frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
 
+                # Application action labels
+                action_frame = tk.Frame(app_frame, bg="#ffffff")
+                action_frame.pack(anchor="e", padx=2, pady=2)
+
+                add_cmd_label = tk.Label(action_frame, text="Add Cmd", fg="green", cursor="hand2", bg="#ffffff")
+                add_cmd_label.pack(side=tk.LEFT, padx=(0, 5))
+                add_cmd_label.bind("<Button-1>", lambda e, app=app_name: self.open_add_command_window(app))
+
+                edit_app_label = tk.Label(action_frame, text="Edit", cursor="hand2", bg="#ffffff")
+                edit_app_label.pack(side=tk.LEFT, padx=(0, 5))
+                edit_app_label.bind("<Button-1>", lambda e, app=app_name: self.edit_application(app))
+
+                delete_app_label = tk.Label(action_frame, text="Delete", fg="red", cursor="hand2", bg="#ffffff")
+                delete_app_label.pack(side=tk.LEFT)
+                delete_app_label.bind("<Button-1>", lambda e, app=app_name: self.delete_application(app))
+
                 col += 1
                 if col > 1:
                     col = 0
                     row += 1
-
-                add_command_button = tk.Button(app_frame, text="Add Cmd",
-                                               command=lambda app=app_name: self.open_add_command_window(app))
-                add_command_button.pack(pady=5, padx=5)
 
                 for command_id, command_data in app_commands.items():
                     if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
@@ -272,7 +283,7 @@ class CommandApp:
                     command_label.pack(side=tk.LEFT)
 
                     run_command_button = tk.Button(command_frame, text="Run",
-                                                   command=lambda cmd=command: self.open_variable_prompt(cmd))
+                                                   command=lambda cmd=command: self.run_or_prompt(cmd))
                     run_command_button.pack(side=tk.LEFT, padx=5)
 
                     edit_command_button = tk.Button(command_frame, text="Edit", command=lambda cmd_id=command_id,
@@ -396,6 +407,22 @@ class CommandApp:
             logging.error(f"Error showing command history: {e}")
             messagebox.showerror("History Error", f"Failed to show command history. Details: {e}")
 
+    def delete_command(self, app_name, command_id):
+        try:
+            if self.command_manager.delete_command(app_name, command_id):
+                self.update_home_display()
+            else:
+                messagebox.showwarning("Warning", "Failed to delete command.")
+        except Exception as e:
+            logging.error(f"Error deleting command: {e}")
+            messagebox.showerror("Delete Error", f"Failed to delete command. Details: {e}")
+
+    def run_or_prompt(self, command):
+        if extract_placeholders(command):
+            self.open_variable_prompt(command)
+        else:
+            self.execute_command(command)
+
     def quit_application(self):
         try:
             self.root.quit()
@@ -407,12 +434,15 @@ class CommandApp:
         try:
             help_text = (
                 "Help:\n\n"
-                "1. **Add Application**: Go to 'File' > 'Add Application' or press Ctrl+A to add a new application.\n"
-                "2. **Add Command**: Click the 'Add Cmd' button within an application's frame to add a new command.\n"
-                "3. **Edit Command**: Use the 'Edit' button next to a command to modify it.\n"
-                "4. **Delete Command**: Use the 'Delete' button to remove a command.\n"
-                "5. **Run Command**: Click 'Run' to execute a command and see the output.\n"
-                "6. **Export/Import**: Commands can be exported and imported via the File menu.\n\n"
+                "1. **Add Application**: Click 'Add Application' in the File menu to add a new application.\n\n"
+                "2. **Add Command**: Click 'Add Cmd' under an application's frame to add a new command.\n\n"
+                "3. **Edit Command**: Use the 'Edit' label next to a command to modify it.\n\n"
+                "4. **Delete Command**: Use the 'Delete' label to remove a command.\n\n"
+                "5. **Run Command**: Click 'Run' to execute a command.\n\n"
+                "6. **View History**: Click 'History' next to a command to see its past executions.\n\n"
+                "7. **Edit Application**: Click 'Edit' to modify the name of an application.\n\n"
+                "8. **Delete Application**: Click 'Delete' to remove an entire application and its commands.\n\n"
+                "9. **Exit**: Click 'Exit' in the File menu to quit the application.\n\n"
                 "For further assistance, refer to the documentation or contact support."
             )
             self.show_info_window("Help", help_text)
@@ -474,19 +504,12 @@ class CommandApp:
                 value = entry.get()
                 command = command.replace(f"{{{ph}}}", value)
 
-            messagebox.showinfo("Final Command", f"Executing: {command}")
             self.execute_command(command)
         except (tk.TclError, ValueError) as e:
             logging.error(f"Error submitting variables: {e}")
             messagebox.showerror("Variable Error", f"Failed to submit variables. Details: {e}")
 
     def execute_command(self, command):
-        """
-        Executa um comando shell em uma thread separada para evitar congelamento da interface gráfica.
-
-        Args:
-            command (str): O comando shell a ser executado.
-        """
         def run_command():
             try:
                 result = subprocess.run(command, shell=True, capture_output=True, text=True)
@@ -496,7 +519,6 @@ class CommandApp:
                                                          entry={
                                                              "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                                              "result": result.stdout.strip()})
-                messagebox.showinfo("Command Result", success_message)
             except subprocess.CalledProcessError as e:
                 error_message = f"Command failed with error: {command}\nError Output:\n{e.stderr}"
                 logging.error(error_message)
@@ -507,6 +529,26 @@ class CommandApp:
 
         threading.Thread(target=run_command).start()
 
+    def edit_application(self, app_name):
+        try:
+            new_name = simpledialog.askstring("Edit Application", "Enter new application name:", initialvalue=app_name)
+            if new_name and new_name != app_name:
+                self.command_manager.commands[new_name] = self.command_manager.commands.pop(app_name)
+                self.command_manager.save_commands()
+                self.update_home_display()
+        except (tk.TclError, ValueError) as e:
+            logging.error(f"Error editing application: {e}")
+            messagebox.showerror("Edit Error", f"Failed to edit application. Details: {e}")
+
+    def delete_application(self, app_name):
+        try:
+            if messagebox.askyesno("Delete Application", f"Are you sure you want to delete '{app_name}'?"):
+                del self.command_manager.commands[app_name]
+                self.command_manager.save_commands()
+                self.update_home_display()
+        except (tk.TclError, ValueError) as e:
+            logging.error(f"Error deleting application: {e}")
+            messagebox.showerror("Delete Error", f"Failed to delete application. Details: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
