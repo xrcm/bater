@@ -1,44 +1,5 @@
 {
     "App1": {
-        "uuid1": {
-            "name": "command1",
-            "command": "echo Hello World",
-            "history": [
-                {
-                    "timestamp": "2024-08-14 17:37:57",
-                    "success": true
-                },
-                "Hello World\n",
-                "Hello World\n",
-                "Hello World\n",
-                "Hello World\n",
-                "Hello World\n",
-                "Hello World\n"
-            ]
-        },
-        "uuid2": {
-            "name": "command2",
-            "command": "ls -la",
-            "history": [
-                {
-                    "timestamp": "2024-08-14 17:38:13",
-                    "success": false
-                },
-                {
-                    "timestamp": "2024-08-14 17:38:23",
-                    "success": false
-                },
-                {
-                    "timestamp": "2024-08-14 17:38:27",
-                    "success": false
-                }
-            ]
-        },
-        "713f5b91-e6ec-4df8-ac47-95bcb3d767f3": {
-            "name": "calc",
-            "command": "calc",
-            "history": []
-        },
         "7e31387c-4647-4477-a230-70c17970b0bb": {
             "name": "siga",
             "command": "calc (1)",
@@ -56,6 +17,13 @@
         "fcd8ac4d-ccb8-445e-8ab4-b24aab97906a": {
             "name": "yay",
             "command": "calc",
+            "history": []
+        }
+    },
+    "curl": {
+        "58925bdf-9bd2-45b2-bc68-757c6daaf539": {
+            "name": "curl --version",
+            "command": "curl --version",
             "history": []
         }
     }
