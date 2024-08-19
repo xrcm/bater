@@ -6,9 +6,7 @@ import json
 import os
 import uuid
 import re
-import time
 import platform
-
 
 class CommandApp:
     def __init__(self, root):
@@ -89,42 +87,40 @@ class CommandApp:
                 col = 0
                 row += 1
 
-            add_command_button = tk.Button(app_frame, text="Add Cmd",
-                                           command=lambda app=app_name: self.open_add_command_window(app))
-            add_command_button.pack(pady=5, padx=5)
+            # Create column to align buttons
+            button_column = tk.Frame(app_frame)
+            button_column.grid(row=0, column=2, sticky="ns")
+
+            # Add headers
+            tk.Label(button_column, text="Edit", width=10, anchor='w').grid(row=0, column=0, padx=5, pady=5)
+            tk.Label(button_column, text="Delete", width=10, anchor='w').grid(row=1, column=0, padx=5, pady=5)
+            tk.Label(button_column, text="History", width=10, anchor='w').grid(row=2, column=0, padx=5, pady=5)
 
             for command_id, command_data in app_commands.items():
-                if not isinstance(command_data,
-                                  dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
+                if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     continue
 
                 command_name = command_data['name']
-                command = command_data['command']
+                command_text = command_data['command']
 
                 command_frame = tk.Frame(app_frame)
-                command_frame.pack(pady=5, padx=5)
+                command_frame.grid(row=row, column=0, sticky="w", padx=5, pady=5)
 
-                command_label = tk.Label(command_frame, text=command_name)
-                command_label.pack(side=tk.LEFT)
+                # Nome do comando truncado com reticências
+                command_label = tk.Label(command_frame, text=command_name, anchor='w', width=30, padx=5, bg="lightgray")
+                command_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-                run_command_button = tk.Button(command_frame, text="Run",
-                                               command=lambda cmd=command: self.open_variable_prompt(cmd))
-                run_command_button.pack(side=tk.LEFT, padx=5)
+                # Add buttons aligned with headers
+                button_edit = tk.Button(button_column, text="Edit", command=lambda cmd_id=command_id, app=app_name: self.open_edit_command_window(app, cmd_id))
+                button_edit.grid(row=row, column=0, padx=5, pady=2)
 
-                edit_command_button = tk.Button(command_frame, text="Edit", command=lambda cmd_id=command_id,
-                                                                                           app=app_name: self.open_edit_command_window(
-                    app, cmd_id))
-                edit_command_button.pack(side=tk.LEFT, padx=5)
+                button_delete = tk.Button(button_column, text="Delete", command=lambda cmd_id=command_id, app=app_name: self.delete_command(app, cmd_id))
+                button_delete.grid(row=row, column=1, padx=5, pady=2)
 
-                delete_command_button = tk.Button(command_frame, text="Delete",
-                                                  command=lambda cmd_id=command_id, app=app_name: self.delete_command(
-                                                      app, cmd_id))
-                delete_command_button.pack(side=tk.LEFT, padx=5)
+                button_history = tk.Button(button_column, text="History", command=lambda cmd_id=command_id, app=app_name: self.show_command_history(app, cmd_id))
+                button_history.grid(row=row, column=2, padx=5, pady=2)
 
-                history_button = tk.Button(command_frame, text="History",
-                                           command=lambda cmd_id=command_id, app=app_name: self.show_command_history(
-                                               app, cmd_id))
-                history_button.pack(side=tk.LEFT, padx=5)
+                row += 1
 
     def on_frame_home_inner_configure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -136,9 +132,6 @@ class CommandApp:
         else:
             messagebox.showwarning("Warning", "Application already exists or invalid name.")
 
-    def open_add_command_window(self, app_name):
-        AddCommandWindow(self, app_name)
-
     def open_edit_command_window(self, app_name, command_id):
         command_data = self.command_manager.commands.get(app_name, {}).get(command_id, {})
         if not command_data:
@@ -146,10 +139,8 @@ class CommandApp:
             return
 
         new_name = simpledialog.askstring("Edit Command", "Enter new command name:", initialvalue=command_data['name'])
-        new_command_text = simpledialog.askstring("Edit Command", "Enter new command text:",
-                                                  initialvalue=command_data['command'])
-        if new_name and new_command_text and self.command_manager.edit_command(app_name, command_id, new_name,
-                                                                               new_command_text):
+        new_command_text = simpledialog.askstring("Edit Command", "Enter new command text:", initialvalue=command_data['command'])
+        if new_name and new_command_text and self.command_manager.edit_command(app_name, command_id, new_name, new_command_text):
             self.update_home_display()
         else:
             messagebox.showwarning("Warning", "Failed to edit command or invalid input.")
@@ -209,15 +200,12 @@ class CommandApp:
     def execute_command(self, command):
         def run_command():
             try:
-                # Verifica o SO e ajusta o comando se necessário
-                if platform.system() == 'Windows':
-                    result = subprocess.run(command, shell=True, text=True, capture_output=True, check=True)
-                else:
-                    result = subprocess.run(command, shell=True, executable='/bin/bash', text=True, capture_output=True,
-                                            check=True)
+                result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
 
                 self.root.after(0, lambda: messagebox.showinfo("Command Output", result.stdout))
                 self.command_manager.add_to_history(command, result.stdout, result.stderr, result.returncode)
+            except subprocess.CalledProcessError as e:
+                self.root.after(0, lambda: messagebox.showerror("Execution Error", f"Error Code: {e.returncode}\n{e.output}"))
             except Exception as e:
                 self.root.after(0, lambda: messagebox.showerror("Execution Error", str(e)))
 
@@ -229,9 +217,8 @@ class CommandApp:
             messagebox.showwarning("Warning", "Command not found.")
             return
 
-        # Garante que o histórico é uma lista de strings
         history = command.get('history', [])
-        history_text = "\n".join(str(entry) for entry in history) if history else "No history available."
+        history_text = "\n".join(f"Output: {entry['stdout']}\nError: {entry['stderr']}\nReturn Code: {entry['returncode']}" for entry in history) if history else "No history available."
 
         history_window = tk.Toplevel(self.root)
         history_window.title("Command History")
@@ -369,7 +356,6 @@ class CommandManager:
                     })
                     self.save_commands()
                     return
-
 
 if __name__ == "__main__":
     root = tk.Tk()
