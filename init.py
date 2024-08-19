@@ -10,6 +10,7 @@ import threading
 import logging
 from logging.handlers import RotatingFileHandler
 import shlex
+import re
 import sys  # Para o reinício da aplicação
 
 # Configure logging with rotation to avoid large log files.
@@ -19,7 +20,6 @@ logging.basicConfig(handlers=[handler], level=logging.INFO, format='%(asctime)s 
 
 def extract_placeholders(command_template):
     """Extract placeholders from a command template."""
-    import re
     return re.findall(r'\{(\w+)}', command_template)
 
 def is_dangerous_command(command):
@@ -30,6 +30,12 @@ def is_dangerous_command(command):
         if token in dangerous_keywords:
             return True
     return False
+
+def sanitize_output(output):
+    """Replace special characters in the output with a space."""
+    # Adjusted the regular expression to avoid errors
+    sanitized_output = re.sub(r'[^\w\s.,;:!?@#%&()\[\]{}<>+\-/*=]', ' ', output)
+    return sanitized_output
 
 class CommandManager:
     """
@@ -66,10 +72,11 @@ class CommandManager:
         """Add a history entry to a specific command."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            sanitized_output = sanitize_output(output)  # Sanitize the output before saving
             history_entry = {
                 'timestamp': timestamp,
                 'command': command_text,
-                'output': output
+                'output': sanitized_output
             }
             history = self.commands[app_name][command_id]['history']
             history.append(history_entry)
@@ -215,7 +222,8 @@ class CommandExecutor(threading.Thread):
             process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()
             success = process.returncode == 0
-            result = stdout.decode().strip() or stderr.decode().strip()
+            result2 = stdout.decode().strip() or stderr.decode().strip()
+            result = sanitize_output(result2)
             return success, result
         except (subprocess.SubprocessError, OSError) as e:
             logging.error(f"Error running command: {e}")
@@ -366,7 +374,9 @@ class CommandApp(wx.Frame):
             wx.MessageBox("No history available for this command.", "History", wx.OK | wx.ICON_INFORMATION)
             return
 
-        dialog = wx.Dialog(self, title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}", size=(600, 400))
+        dialog = wx.Dialog(self,
+                           title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}",
+                           size=(600, 400))
         vbox = wx.BoxSizer(wx.VERTICAL)
 
         history_text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -375,9 +385,12 @@ class CommandApp(wx.Frame):
             command = entry.get('command', 'Unknown command')
             output = entry.get('output', 'No output')
 
+            # Add better separation between entries
+            history_text.AppendText("----------------------------------------------------\n")
             history_text.AppendText(f"Executed on: {timestamp}\n")
             history_text.AppendText(f"Command executed:\n{command}\n")
-            history_text.AppendText(f"Output:\n{output}\n\n")
+            history_text.AppendText(f"Output:\n{output}\n")
+            history_text.AppendText("----------------------------------------------------\n\n")
 
         vbox.Add(history_text, 1, wx.ALL | wx.EXPAND, 10)
         close_button = wx.Button(dialog, label="Close")
@@ -390,7 +403,8 @@ class CommandApp(wx.Frame):
     def execute_command(self, app_name, command_id, command):
         """Execute a command, with a warning if it's potentially dangerous."""
         if is_dangerous_command(command):
-            wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command", wx.OK | wx.ICON_WARNING)
+            wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command",
+                          wx.OK | wx.ICON_WARNING)
             return
 
         def on_command_finished(success, result):
@@ -398,7 +412,9 @@ class CommandApp(wx.Frame):
                 wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
             else:
                 wx.MessageBox(result, "Command Error", wx.OK | wx.ICON_ERROR)
-            self.update_home_display()  # Update display to enable history button
+
+            # Force update display to ensure history button is enabled
+            self.update_home_display()
 
         CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
 
