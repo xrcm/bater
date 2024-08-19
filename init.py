@@ -11,7 +11,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import shlex
 import re
-import sys  # Para o reinício da aplicação
+import sys  # For application restart
 
 # Configure logging with rotation to avoid large log files.
 handler = RotatingFileHandler('command_app.log', maxBytes=10000, backupCount=3)
@@ -31,11 +31,43 @@ def is_dangerous_command(command):
             return True
     return False
 
-def sanitize_output(output):
+def sanitize_text(output):
     """Replace special characters in the output with a space."""
-    # Adjusted the regular expression to avoid errors
     sanitized_output = re.sub(r'[^\w\s.,;:!?@#%&()\[\]{}<>+\-/*=]', ' ', output)
     return sanitized_output
+
+class CommandExecutor(threading.Thread):
+    """
+    Class responsible for executing shell commands in a separate thread to avoid freezing the UI.
+    """
+
+    def __init__(self, command, callback, app_name, command_id, command_manager):
+        """Initialize the thread with a command and a callback function."""
+        super().__init__()
+        self.command = command
+        self.callback = callback
+        self.app_name = app_name
+        self.command_id = command_id
+        self.command_manager = command_manager
+
+    def run(self):
+        """Run the command and return the result to the callback."""
+        success, result = self.run_command(self.command)
+        self.command_manager.add_command_history(self.app_name, self.command_id, self.command, result)
+        wx.CallAfter(self.callback, success, result)
+
+    @staticmethod
+    def run_command(command):
+        """Static method to execute the command and capture the output."""
+        try:
+            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()
+            success = process.returncode == 0
+            result = stdout.decode().strip() or stderr.decode().strip()
+            return success, result
+        except (subprocess.SubprocessError, OSError) as e:
+            logging.error(f"Error running command: {e}")
+            return False, f"Failed to execute command. Details: {e}"
 
 class CommandManager:
     """
@@ -64,15 +96,18 @@ class CommandManager:
                 'command': command_text,
                 'history': []
             }
+            self.add_command_history(app_name, command_id, command_text, f"Command '{command_name}' created.")  # Add history on creation
             self.save_commands()
             return True
         return False
 
-    def add_command_history(self, app_name, command_id, command_text, output):
+    def add_command_history(self, app_name, command_id, command_text, output=None):
         """Add a history entry to a specific command."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            sanitized_output = sanitize_output(output)  # Sanitize the output before saving
+            command_text = sanitize_text(command_text)  # Sanitize the command text before saving
+            sanitized_output = sanitize_text(output) if output else ''  # Sanitize the output before saving
+
             history_entry = {
                 'timestamp': timestamp,
                 'command': command_text,
@@ -106,11 +141,17 @@ class CommandManager:
     def edit_command(self, app_name, command_id, new_name, new_command_text):
         """Edit an existing command's name and text."""
         if app_name in self.commands and command_id in self.commands[app_name]:
+            old_name = self.commands[app_name][command_id]['name']
+            old_command = self.commands[app_name][command_id]['command']
+            history_text = (f"Command '{old_name}' edited.\n\n"
+                            f"Before:\nName: {old_name}\nCommand: {old_command}\n\n"
+                            f"After:\nName: {new_name}\nCommand: {new_command_text}")
             self.commands[app_name][command_id] = {
                 'name': new_name,
                 'command': new_command_text,
                 'history': self.commands[app_name][command_id]['history']
             }
+            self.add_command_history(app_name, command_id, new_command_text, history_text)  # Add history on edit
             self.save_commands()
             return True
         return False
@@ -195,40 +236,6 @@ class CommandManager:
                 if not isinstance(command_data, dict) or 'name' not in command_data or 'command' not in command_data or 'history' not in command_data:
                     raise ValueError("Invalid command structure.")
 
-class CommandExecutor(threading.Thread):
-    """
-    Class responsible for executing shell commands in a separate thread to avoid freezing the UI.
-    """
-
-    def __init__(self, command, callback, app_name, command_id, command_manager):
-        """Initialize the thread with a command and a callback function."""
-        super().__init__()
-        self.command = command
-        self.callback = callback
-        self.app_name = app_name
-        self.command_id = command_id
-        self.command_manager = command_manager
-
-    def run(self):
-        """Run the command and return the result to the callback."""
-        success, result = self.run_command(self.command)
-        self.command_manager.add_command_history(self.app_name, self.command_id, self.command, result)
-        wx.CallAfter(self.callback, success, result)
-
-    @staticmethod
-    def run_command(command):
-        """Static method to execute the command and capture the output."""
-        try:
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate()
-            success = process.returncode == 0
-            result2 = stdout.decode().strip() or stderr.decode().strip()
-            result = sanitize_output(result2)
-            return success, result
-        except (subprocess.SubprocessError, OSError) as e:
-            logging.error(f"Error running command: {e}")
-            return False, f"Failed to execute command. Details: {e}"
-
 class CommandApp(wx.Frame):
     """
     The main application class responsible for the UI and user interaction.
@@ -236,7 +243,6 @@ class CommandApp(wx.Frame):
 
     def __init__(self, parent, title):
         """Initialize the main application window and its components."""
-        # Set initial size to 1280x720 if screen resolution is 1920x1080 or higher
         screen_width, screen_height = wx.GetDisplaySize()
         initial_size = (1280, 720) if screen_width >= 1920 and screen_height >= 1080 else (640, 480)
         super(CommandApp, self).__init__(parent, title=title, size=initial_size)
@@ -274,9 +280,46 @@ class CommandApp(wx.Frame):
         self.Bind(wx.EVT_MENU, self.open_help_window, help_item)
         self.Bind(wx.EVT_MENU, self.open_about_window, about_item)
 
-    def setup_home_frame(self):
-        """Set up the main home frame, including the canvas and scrollbars."""
-        self.update_home_display()
+    def edit_application_name(self, app_name):
+        """Edit the name of the application."""
+        dialog = wx.TextEntryDialog(self, f"Enter new name for the application '{app_name}':", "Edit Application Name")
+        if dialog.ShowModal() == wx.ID_OK:
+            new_name = dialog.GetValue()
+            if new_name and new_name != app_name:
+                self.command_manager.commands[new_name] = self.command_manager.commands.pop(app_name)
+                self.command_manager.save_commands()
+                self.update_home_display()
+
+    def execute_command(self, app_name, command_id, command):
+        """Execute a command, with a warning if it's potentially dangerous."""
+        if is_dangerous_command(command):
+            wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command", wx.OK | wx.ICON_WARNING)
+            return
+
+        def on_command_finished(success, result):
+            if not result:
+                result = ""
+
+            self.command_manager.add_command_history(app_name, command_id, command, result)
+
+            if result:
+                wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
+
+            # No need to update the display if history already exists
+            if not self.command_manager.get_command_history(app_name, command_id):
+                self.update_home_display()
+
+        CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
+
+    def open_about_window(self, event):
+        """Open the About window with application details."""
+        about_text = (
+            "BATER: Terminal Command Controller\n"
+            "Version 1.0\n"
+            "Developed by Rafael Martins\n"
+            "© 2024"
+        )
+        wx.MessageBox(about_text, "About", wx.OK | wx.ICON_INFORMATION)
 
     def open_add_application_window(self, event=None):
         """Open a dialog to add a new application."""
@@ -299,28 +342,6 @@ class CommandApp(wx.Frame):
                     self.update_home_display()
                 else:
                     wx.MessageBox(f"Failed to add command '{command_name}' to application '{app_name}'.", "Warning", wx.OK | wx.ICON_WARNING)
-
-    def edit_application_name(self, app_name):
-        """Edit the name of the application."""
-        dialog = wx.TextEntryDialog(self, f"Enter new name for the application '{app_name}':", "Edit Application Name")
-        if dialog.ShowModal() == wx.ID_OK:
-            new_name = dialog.GetValue()
-            if new_name and new_name != app_name:
-                # Rename the application
-                self.command_manager.commands[new_name] = self.command_manager.commands.pop(app_name)
-                self.command_manager.save_commands()
-                self.update_home_display()
-
-    def delete_application(self, app_name):
-        """Delete an entire application and all its commands."""
-        if app_name in self.command_manager.commands:
-            confirm = wx.MessageBox(f"Are you sure you want to delete '{app_name}'?", "Delete Application", wx.YES_NO | wx.ICON_QUESTION)
-            if confirm == wx.YES:
-                del self.command_manager.commands[app_name]
-                self.command_manager.save_commands()
-                self.update_home_display()
-        else:
-            wx.MessageBox(f"Application '{app_name}' not found.", "Warning", wx.OK | wx.ICON_WARNING)
 
     def open_edit_command_window(self, app_name, command_id):
         """Open a window to edit an existing command."""
@@ -360,81 +381,6 @@ class CommandApp(wx.Frame):
         dialog.SetSizer(vbox)
         dialog.ShowModal()
 
-    def save_command_changes(self, dialog, app_name, command_id, new_name, new_command_text):
-        """Save the edited command changes."""
-        if new_name and new_command_text:
-            self.command_manager.edit_command(app_name, command_id, new_name, new_command_text)
-            self.update_home_display()
-            dialog.Destroy()
-
-    def show_command_history(self, app_name, command_id):
-        """Show the history of a specific command in a new window."""
-        history = self.command_manager.get_command_history(app_name, command_id)
-        if not history:
-            wx.MessageBox("No history available for this command.", "History", wx.OK | wx.ICON_INFORMATION)
-            return
-
-        dialog = wx.Dialog(self,
-                           title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}",
-                           size=(600, 400))
-        vbox = wx.BoxSizer(wx.VERTICAL)
-
-        history_text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        for entry in history[-1000:]:
-            timestamp = entry.get('timestamp', 'Unknown time')
-            command = entry.get('command', 'Unknown command')
-            output = entry.get('output', 'No output')
-
-            # Add better separation between entries
-            history_text.AppendText("----------------------------------------------------\n")
-            history_text.AppendText(f"Executed on: {timestamp}\n")
-            history_text.AppendText(f"Command executed:\n{command}\n")
-            history_text.AppendText(f"Output:\n{output}\n")
-            history_text.AppendText("----------------------------------------------------\n\n")
-
-        vbox.Add(history_text, 1, wx.ALL | wx.EXPAND, 10)
-        close_button = wx.Button(dialog, label="Close")
-        close_button.Bind(wx.EVT_BUTTON, lambda event: dialog.Destroy())
-        vbox.Add(close_button, 0, wx.ALIGN_CENTER | wx.ALL, 10)
-
-        dialog.SetSizer(vbox)
-        dialog.ShowModal()
-
-    def execute_command(self, app_name, command_id, command):
-        """Execute a command, with a warning if it's potentially dangerous."""
-        if is_dangerous_command(command):
-            wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command",
-                          wx.OK | wx.ICON_WARNING)
-            return
-
-        def on_command_finished(success, result):
-            if success:
-                wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
-            else:
-                wx.MessageBox(result, "Command Error", wx.OK | wx.ICON_ERROR)
-
-            # Force update display to ensure history button is enabled
-            self.update_home_display()
-
-        CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
-
-    def delete_command(self, app_name, command_id):
-        """Delete a specific command from an application."""
-        if self.command_manager.delete_command(app_name, command_id):
-            self.update_home_display()
-        else:
-            wx.MessageBox("Failed to delete command.", "Warning", wx.OK | wx.ICON_WARNING)
-
-    def open_about_window(self, event):
-        """Open the About window with application details."""
-        about_text = (
-            "BATER: Terminal Command Controller\n"
-            "Version 1.0\n"
-            "Developed by Rafael Martins\n"
-            "© 2024"
-        )
-        wx.MessageBox(about_text, "About", wx.OK | wx.ICON_INFORMATION)
-
     def open_help_window(self, event):
         """Open the Help window with usage instructions."""
         help_text = (
@@ -453,6 +399,10 @@ class CommandApp(wx.Frame):
         )
         wx.MessageBox(help_text, "Help", wx.OK | wx.ICON_INFORMATION)
 
+    def quit_application(self, event):
+        """Quit the application."""
+        self.Close()
+
     def restart_application(self, event):
         """Restart the application."""
         self.Close()
@@ -460,9 +410,45 @@ class CommandApp(wx.Frame):
         python = sys.executable
         os.execl(python, python, *sys.argv)  # Restart the application
 
-    def quit_application(self, event):
-        """Quit the application."""
-        self.Close()
+    def save_command_changes(self, dialog, app_name, command_id, new_name, new_command_text):
+        """Save the edited command changes."""
+        if new_name and new_command_text:
+            self.command_manager.edit_command(app_name, command_id, new_name, new_command_text)
+            self.update_home_display()
+            dialog.Destroy()
+
+    def show_command_history(self, app_name, command_id):
+        """Show the history of a specific command in a new window."""
+        history = self.command_manager.get_command_history(app_name, command_id)
+        if not history:
+            wx.MessageBox("No history available for this command.", "History", wx.OK | wx.ICON_INFORMATION)
+            return
+
+        dialog = wx.Dialog(self, title=f"History for Command: {self.command_manager.commands[app_name][command_id]['name']}", size=(600, 400))
+        vbox = wx.BoxSizer(wx.VERTICAL)
+
+        history_text = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY)
+
+        # Invert the order of the history to show the most recent first
+        for entry in reversed(history[-1000:]):
+            timestamp = entry.get('timestamp', 'Unknown time')
+            command = entry.get('command', 'Unknown command')
+            output = entry.get('output', 'No output')
+
+            # Add better separation between entries
+            history_text.AppendText("----------------------------------------------------\n")
+            history_text.AppendText(f"Executed on: {timestamp}\n")
+            history_text.AppendText(f"Command executed:\n{command}\n")
+            history_text.AppendText(f"Output:\n{output}\n")
+            history_text.AppendText("----------------------------------------------------\n\n")
+
+        vbox.Add(history_text, 1, wx.ALL | wx.EXPAND, 10)
+        close_button = wx.Button(dialog, label="Close")
+        close_button.Bind(wx.EVT_BUTTON, lambda event: dialog.Destroy())
+        vbox.Add(close_button, 0, wx.ALIGN_CENTER | wx.ALL, 10)
+
+        dialog.SetSizer(vbox)
+        dialog.ShowModal()
 
     def update_home_display(self):
         """Update the home display dynamically based on the window size."""
@@ -503,22 +489,15 @@ class CommandApp(wx.Frame):
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
-                edit_button.Bind(wx.EVT_BUTTON,
-                                 lambda event, cmd_id=command_id, app=app_name: self.open_edit_command_window(app,
-                                                                                                              cmd_id))
+                edit_button.Bind(wx.EVT_BUTTON, lambda event, cmd_id=command_id, app=app_name: self.open_edit_command_window(app, cmd_id))
                 command_sizer.Add(edit_button, 0, wx.ALL, 5)
 
                 history_button = wx.Button(command_panel, label="History")
-                history_button.Bind(wx.EVT_BUTTON,
-                                    lambda event, cmd_id=command_id, app=app_name: self.show_command_history(app,
-                                                                                                             cmd_id))
-                if not self.command_manager.get_command_history(app_name, command_id):
-                    history_button.Disable()
+                history_button.Bind(wx.EVT_BUTTON, lambda event, cmd_id=command_id, app=app_name: self.show_command_history(app, cmd_id))
                 command_sizer.Add(history_button, 0, wx.ALL, 5)
 
                 delete_button = wx.Button(command_panel, label="Delete")
-                delete_button.Bind(wx.EVT_BUTTON,
-                                   lambda event, cmd_id=command_id, app=app_name: self.delete_command(app, cmd_id))
+                delete_button.Bind(wx.EVT_BUTTON, lambda event, cmd_id=command_id, app=app_name: self.delete_command(app, cmd_id))
                 command_sizer.Add(delete_button, 0, wx.ALL, 5)
 
                 command_panel.SetSizer(command_sizer)
