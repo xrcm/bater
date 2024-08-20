@@ -51,21 +51,22 @@ class CommandManager:
             return True
         return False
 
-    def add_command(self, app_name, command_name, command_text):
+    def add_command(self, app_name, command_name, command_text, show_output=True):
         """Add a new command to the specified application."""
         if app_name in self.commands:
             command_id = str(uuid.uuid4())
             self.commands[app_name][command_id] = {
                 'name': command_name,
                 'command': command_text,
-                'history': []
+                'history': [],
+                'show_output': show_output
             }
-            self.add_command_history(app_name, command_id, command_text, event_type="creation")
+            self.add_command_history(app_name, command_id, command_text, event_type="creation", show_output=show_output)
             self.save_commands()
             return True
         return False
 
-    def add_command_history(self, app_name, command_id, command_text_in, output="", event_type="execution"):
+    def add_command_history(self, app_name, command_id, command_text_in, output="", event_type="execution", show_output=True):
         """Add a history entry to a specific command."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -80,7 +81,8 @@ class CommandManager:
                                f"{command_text}"
                                f"----------------------------------------------------\n"
                                f"----------------------------------------------------\n",
-                    "output": ""
+                    "output": "",
+                    "show_output": show_output
                 }
             elif event_type == "edit":
                 history_entry = {
@@ -92,14 +94,16 @@ class CommandManager:
                               f"Command Edited on: {timestamp}\n"
                               f"New Command:\n{command_text}\n"
                               f"----------------------------------------------------\n"
-                              f"----------------------------------------------------\n"
+                              f"----------------------------------------------------\n",
+                    "show_output": show_output
                 }
             else:  # Default to "execution"
                 history_entry = {
                     "timestamp": timestamp,
                     "type": "execution",
                     "command": f"Executed on: {timestamp}\nCommand executed:\n{command_text}\nOutput:\n",
-                    "output": sanitize_text(output)
+                    "output": sanitize_text(output),
+                    "show_output": show_output
                 }
 
             history = self.commands[app_name][command_id]['history']
@@ -127,7 +131,7 @@ class CommandManager:
             return True
         return False
 
-    def edit_command(self, app_name, command_id, new_name, new_command_text):
+    def edit_command(self, app_name, command_id, new_name, new_command_text, show_output=True):
         """Edit an existing command's name and text."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             command_data = self.commands[app_name][command_id]
@@ -137,7 +141,8 @@ class CommandManager:
             self.commands[app_name][command_id] = {
                 'name': new_name,
                 'command': new_command_text,
-                'history': command_data['history']
+                'history': command_data['history'],
+                'show_output': show_output
             }
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -153,7 +158,8 @@ class CommandManager:
                            f"New Command:\n{new_command_text}\n"
                            f"----------------------------------------------------\n"
                            f"----------------------------------------------------\n",
-                "output": ""
+                "output": "",
+                "show_output": show_output
             }
             command_data['history'].append(history_entry)
 
@@ -276,8 +282,9 @@ class CommandApp(wx.Frame):
         help_item = file_menu.Append(wx.ID_ANY, "Help")
 
         file_menu.AppendSeparator()
-        exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
         restart_app = file_menu.Append(wx.ID_ANY, "Restart")
+        exit_app = file_menu.Append(wx.ID_EXIT, "Exit")
+
 
         menu_bar.Append(file_menu, "BATER")
         self.SetMenuBar(menu_bar)
@@ -336,7 +343,32 @@ class CommandApp(wx.Frame):
             "Developed by Rafael Martins\n"
             "© 2024"
         )
-        wx.MessageBox(about_text, "About", wx.OK | wx.ICON_INFORMATION)
+        dialog = wx.Dialog(self, title="About BATER", size=(400, 300))
+        vbox = wx.BoxSizer(wx.VERTICAL)
+
+        about_label = wx.StaticText(dialog, label=about_text)
+        vbox.Add(about_label, 0, wx.ALL | wx.ALIGN_CENTER, 10)
+
+        # Adding a clickable URL using StaticText and binding the event
+        url_label = wx.StaticText(dialog, label="https://github.com/xrcm/bater/")
+        url_label.SetForegroundColour(wx.Colour(0, 0, 255))  # Set color to blue
+        font = url_label.GetFont()
+        font.SetUnderlined(True)  # Underline the text to indicate it's a link
+        url_label.SetFont(font)
+        vbox.Add(url_label, 0, wx.ALL | wx.ALIGN_CENTER, 10)
+
+        url_label.Bind(wx.EVT_LEFT_DOWN, lambda event: webbrowser.open("https://github.com/xrcm/bater/"))
+
+        check_update_button = wx.Button(dialog, label="Check for Update")
+        check_update_button.Bind(wx.EVT_BUTTON, self.check_for_update)
+        vbox.Add(check_update_button, 0, wx.ALL | wx.ALIGN_CENTER, 10)
+
+        close_button = wx.Button(dialog, label="Close")
+        close_button.Bind(wx.EVT_BUTTON, lambda event: dialog.Destroy())
+        vbox.Add(close_button, 0, wx.ALL | wx.ALIGN_CENTER, 10)
+
+        dialog.SetSizer(vbox)
+        dialog.ShowModal()
 
     def edit_application_name(self, app_name):
         """Edit the name of the application."""
@@ -379,13 +411,18 @@ class CommandApp(wx.Frame):
         command_entry = wx.TextCtrl(dialog, value=command_data['command'], style=wx.TE_MULTILINE)
         vbox.Add(command_entry, 1, wx.ALL | wx.EXPAND, 5)
 
+        checkbox = wx.CheckBox(dialog, label="")
+        checkbox.SetValue(command_data.get('show_output', True))
+        checkbox.SetToolTip("Check to show output")
+        vbox.Add(checkbox, 0, wx.ALL | wx.EXPAND, 5)
+
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
         save_button = wx.Button(dialog, label="Save")
-        save_button.Bind(wx.EVT_BUTTON, lambda event: self.save_command_changes(dialog, app_name, command_id, name_entry.GetValue(), command_entry.GetValue()))
+        save_button.Bind(wx.EVT_BUTTON, lambda event: self.save_command_changes(dialog, app_name, command_id, name_entry.GetValue(), command_entry.GetValue(), checkbox.GetValue()))
         button_sizer.Add(save_button, 0, wx.ALL, 5)
 
         execute_button = wx.Button(dialog, label="Execute")
-        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue()))
+        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue(), checkbox.GetValue()))
         button_sizer.Add(execute_button, 0, wx.ALL, 5)
 
         close_button = wx.Button(dialog, label="Close")
@@ -397,14 +434,14 @@ class CommandApp(wx.Frame):
         dialog.SetSizer(vbox)
         dialog.ShowModal()
 
-    def save_command_changes(self, dialog, app_name, command_id, new_name, new_command_text):
+    def save_command_changes(self, dialog, app_name, command_id, new_name, new_command_text, show_output):
         """Save the edited command changes."""
         if new_name and new_command_text:
-            self.command_manager.edit_command(app_name, command_id, new_name, new_command_text)
+            self.command_manager.edit_command(app_name, command_id, new_name, new_command_text, show_output)
             self.update_home_display()
             dialog.Destroy()
 
-    def execute_command(self, app_name, command_id, command):
+    def execute_command(self, app_name, command_id, command, show_output):
         """Execute a command, with a warning if it's potentially dangerous."""
         if is_dangerous_command(command):
             wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command",
@@ -415,9 +452,9 @@ class CommandApp(wx.Frame):
             if not result:
                 result = ""
 
-            self.command_manager.add_command_history(app_name, command_id, command, result)
+            self.command_manager.add_command_history(app_name, command_id, command, result, show_output=show_output)
 
-            if result:
+            if show_output and result:
                 wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
 
         CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
@@ -437,20 +474,6 @@ class CommandApp(wx.Frame):
         # Re-launch the application
         python = sys.executable
         os.execl(python, python, *sys.argv)
-
-        # Use wx.CallAfter to bring the application to the front after it restarts
-        wx.CallAfter(self.bring_to_front)
-
-    def bring_to_front(self):
-        """Bring the application window to the front and give it focus."""
-        if sys.platform == 'win32':
-            import ctypes
-            hwnd = ctypes.windll.user32.GetForegroundWindow()
-            self.Show(True)
-            ctypes.windll.user32.SetForegroundWindow(hwnd)
-        else:
-            self.Raise()
-            self.SetFocus()
 
     def quit_application(self, event):
         """Quit the application."""
@@ -522,7 +545,7 @@ class CommandApp(wx.Frame):
                 command_sizer.Add(command_label, 1, wx.ALL | wx.EXPAND, 5)
 
                 run_button = wx.Button(command_panel, label="Run")
-                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd))
+                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd, command_data.get('show_output', True)))
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
