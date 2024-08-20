@@ -59,7 +59,7 @@ class CommandManager:
                 'name': command_name,
                 'command': command_text,
                 'history': [],
-                'show_output': True  # Default to show output
+                'show_output': True  # Default value for showing output
             }
             self.add_command_history(app_name, command_id, command_text, event_type="creation")
             self.save_commands()
@@ -100,8 +100,7 @@ class CommandManager:
                     "timestamp": timestamp,
                     "type": "execution",
                     "command": f"Executed on: {timestamp}\nCommand executed:\n{command_text}\nOutput:\n",
-                    "output": sanitize_text(output),
-                    "show_output": show_output
+                    "output": sanitize_text(output)
                 }
 
             history = self.commands[app_name][command_id]['history']
@@ -129,7 +128,7 @@ class CommandManager:
             return True
         return False
 
-    def edit_command(self, app_name, command_id, new_name, new_command_text, show_output):
+    def edit_command(self, app_name, command_id, new_name, new_command_text):
         """Edit an existing command's name and text."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             command_data = self.commands[app_name][command_id]
@@ -140,7 +139,7 @@ class CommandManager:
                 'name': new_name,
                 'command': new_command_text,
                 'history': command_data['history'],
-                'show_output': show_output
+                'show_output': command_data.get('show_output', True)
             }
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -237,6 +236,12 @@ class CommandManager:
         except IOError as e:
             logging.error(f"Error saving commands: {e}")
             wx.MessageBox(f"Failed to save commands. Details: {e}", "Error", wx.OK | wx.ICON_ERROR)
+
+    def update_show_output(self, app_name, command_id, show_output):
+        """Update the 'show_output' setting for a command in the JSON file."""
+        if app_name in self.commands and command_id in self.commands[app_name]:
+            self.commands[app_name][command_id]['show_output'] = show_output
+            self.save_commands()
 
     def validate_commands_data(self, data):
         """Validate the structure of the commands data."""
@@ -383,18 +388,13 @@ class CommandApp(wx.Frame):
         command_entry = wx.TextCtrl(dialog, value=command_data['command'], style=wx.TE_MULTILINE)
         vbox.Add(command_entry, 1, wx.ALL | wx.EXPAND, 5)
 
-        show_output_checkbox = wx.CheckBox(dialog, label="")
-        show_output_checkbox.SetToolTip("Show output when executing this command")
-        show_output_checkbox.SetValue(command_data.get('show_output', True))
-        vbox.Add(show_output_checkbox, 0, wx.ALL, 5)
-
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
         save_button = wx.Button(dialog, label="Save")
-        save_button.Bind(wx.EVT_BUTTON, lambda event: self.save_command_changes(dialog, app_name, command_id, name_entry.GetValue(), command_entry.GetValue(), show_output_checkbox.GetValue()))
+        save_button.Bind(wx.EVT_BUTTON, lambda event: self.save_command_changes(dialog, app_name, command_id, name_entry.GetValue(), command_entry.GetValue()))
         button_sizer.Add(save_button, 0, wx.ALL, 5)
 
         execute_button = wx.Button(dialog, label="Execute")
-        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue(), show_output_checkbox.GetValue()))
+        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue()))
         button_sizer.Add(execute_button, 0, wx.ALL, 5)
 
         close_button = wx.Button(dialog, label="Close")
@@ -406,27 +406,29 @@ class CommandApp(wx.Frame):
         dialog.SetSizer(vbox)
         dialog.ShowModal()
 
-    def save_command_changes(self, dialog, app_name, command_id, new_name, new_command_text, show_output):
+    def save_command_changes(self, dialog, app_name, command_id, new_name, new_command_text):
         """Save the edited command changes."""
         if new_name and new_command_text:
-            self.command_manager.edit_command(app_name, command_id, new_name, new_command_text, show_output)
+            self.command_manager.edit_command(app_name, command_id, new_name, new_command_text)
             self.update_home_display()
             dialog.Destroy()
 
-    def execute_command(self, app_name, command_id, command, show_output):
+    def execute_command(self, app_name, command_id, command):
         """Execute a command, with a warning if it's potentially dangerous."""
         if is_dangerous_command(command):
             wx.MessageBox("This command may be dangerous. Please confirm its safety.", "Dangerous Command",
                           wx.OK | wx.ICON_WARNING)
             return
 
+        show_output = self.command_manager.commands[app_name][command_id].get('show_output', True)
+
         def on_command_finished(success, result):
             if not result:
                 result = ""
 
-            self.command_manager.add_command_history(app_name, command_id, command, result, show_output=show_output)
+            self.command_manager.add_command_history(app_name, command_id, command, result)
 
-            if show_output and result:
+            if show_output:
                 wx.MessageBox(result, "Command Output", wx.OK | wx.ICON_INFORMATION)
 
         CommandExecutor(command, on_command_finished, app_name, command_id, self.command_manager).start()
@@ -437,6 +439,12 @@ class CommandApp(wx.Frame):
             self.update_home_display()
         else:
             wx.MessageBox("Failed to delete command.", "Warning", wx.OK | wx.ICON_WARNING)
+
+    def on_checkbox_toggle(self, event, app_name, command_id):
+        """Handle the checkbox toggle to update the JSON file."""
+        checkbox = event.GetEventObject()
+        show_output = checkbox.GetValue()
+        self.command_manager.update_show_output(app_name, command_id, show_output)
 
     def restart_application(self, event):
         """Restart the application."""
@@ -513,17 +521,17 @@ class CommandApp(wx.Frame):
                 command_panel = wx.Panel(self.panel)
                 command_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
+                checkbox = wx.CheckBox(command_panel, label="")
+                checkbox.SetToolTip("Show Output")
+                checkbox.SetValue(command_data.get('show_output', True))
+                checkbox.Bind(wx.EVT_CHECKBOX, lambda event, app=app_name, cmd_id=command_id: self.on_checkbox_toggle(event, app, cmd_id))
+                command_sizer.Add(checkbox, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
+
                 command_label = wx.StaticText(command_panel, label=command_name)
                 command_sizer.Add(command_label, 1, wx.ALL | wx.EXPAND, 5)
 
-                show_output_checkbox = wx.CheckBox(command_panel, label="")
-                show_output_checkbox.SetToolTip("Show output when executing this command")
-                show_output_checkbox.SetValue(command_data.get('show_output', True))
-                show_output_checkbox.Bind(wx.EVT_CHECKBOX, lambda event, cmd_id=command_id, app=app_name, cb=show_output_checkbox: self.update_show_output(app, cmd_id, cb.GetValue()))
-                command_sizer.Add(show_output_checkbox, 0, wx.ALL, 5)
-
                 run_button = wx.Button(command_panel, label="Run")
-                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd, show_output_checkbox.GetValue()))
+                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd))
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
@@ -574,12 +582,6 @@ class CommandApp(wx.Frame):
         self.sizer.Add(flex_sizer, 1, wx.EXPAND | wx.ALL, 10)
         self.panel.SetupScrolling(scrollToTop=False)
         self.Layout()
-
-    def update_show_output(self, app_name, command_id, show_output):
-        """Update the show_output setting for a command."""
-        if app_name in self.command_manager.commands and command_id in self.command_manager.commands[app_name]:
-            self.command_manager.commands[app_name][command_id]['show_output'] = show_output
-            self.command_manager.save_commands()
 
 class CommandExecutor(threading.Thread):
     """Class responsible for executing shell commands in a separate thread to avoid freezing the UI."""
