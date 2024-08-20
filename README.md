@@ -1,49 +1,64 @@
 # Bater
 
-**Bater** é uma aplicação gráfica para gerenciar e executar comandos de terminal. Desenvolvida em Python com Tkinter, a ferramenta permite adicionar, editar e excluir comandos, bem como visualizar seu histórico de execuções.
+**Bater** is a graphical application for managing and executing terminal commands. Developed in Python with wxPython, this tool allows you to add, edit, and delete commands, as well as view their execution history.
 
-## Funcionalidades
+## Features
 
-- Adicione e gerencie aplicações.
-- Execute comandos diretamente da interface gráfica.
-- Visualize o histórico de execuções de comandos.
-- Edite ou exclua aplicações e comandos conforme necessário.
+- **Manage Applications:** Add and organize applications for which you want to create commands.
+- **Execute Commands:** Run commands directly from the graphical interface.
+- **View Command History:** Access a detailed history of command executions, edits, and creations.
+- **Edit and Delete Commands:** Modify or remove applications and commands as needed.
+- **Command Safety:** Built-in checks to warn about potentially dangerous commands.
 
-## Requisitos
+## Requirements
 
-- Python 3.x (inclui Tkinter)
+- Python 3.x
+- wxPython (`pip install wxPython`)
 
-## Instalação
+## Installation
 
-1. Clone o repositório:
-   `git clone https://github.com/xrcm/bater.git`
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/xrcm/bater.git
+   ```
 
-2. Navegue para o diretório do projeto:
-   `cd bater`
+2. Navigate to the project directory:
+   ```sh
+   cd bater
+   ```
 
-3. Execute a aplicação:
-   `python init.py`
+3. Run the application:
+   ```sh
+   python init.py
+   ```
 
-## Uso
+## Usage
 
-- **Adicionar uma Aplicação:** Clique em "File" > "Add Application" e insira o nome da aplicação.
-- **Adicionar um Comando:** Selecione a aplicação e clique em "Add Cmd" para adicionar um comando.
-- **Executar um Comando:** Clique em "Run" ao lado do comando desejado.
-- **Visualizar Histórico:** Clique em "History" para ver o histórico de execuções.
-- **Editar/Excluir Aplicações e Comandos:** Use os botões "Edit" e "Del" nas toolbars.
-- **Sair da Aplicação:** Clique no botão "Sair" no canto inferior direito.
+- **Add an Application:** Click on "BATER" > "Add APP" and enter the name of the application.
+- **Add a Command:** Select the application and click "Add Cmd" to add a new command.
+- **Run a Command:** Click "Run" next to the desired command to execute it.
+- **View History:** Click "History" to view the execution history of a command.
+- **Edit/Delete Applications and Commands:** Use the "Edit" and "Del" options in the application frames to modify or remove items.
+- **Restart Application:** Click "Restart" under "BATER" to restart the application.
+- **Exit Application:** Click "Exit" under "BATER" to quit the application.
 
-## Contribuição
+## Contribution
 
-1. Fork o repositório.
-2. Crie uma branch para sua feature:
-   `git checkout -b feature/nome-da-feature`
-3. Faça commit das suas alterações:
-   `git commit -am 'Descrição das mudanças'`
-4. Envie para o branch:
-   `git push origin feature/nome-da-feature`
-5. Crie um Pull Request.
+1. Fork the repository.
+2. Create a branch for your feature:
+   ```sh
+   git checkout -b feature/your-feature-name
+   ```
+3. Commit your changes:
+   ```sh
+   git commit -am 'Description of your changes'
+   ```
+4. Push to the branch:
+   ```sh
+   git push origin feature/your-feature-name
+   ```
+5. Create a Pull Request.
 
-## Licença
+## License
 
-Este projeto é licenciado sob a Licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.

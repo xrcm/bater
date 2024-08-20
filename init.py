@@ -51,7 +51,7 @@ class CommandManager:
             return True
         return False
 
-    def add_command(self, app_name, command_name, command_text, show_output=True):
+    def add_command(self, app_name, command_name, command_text):
         """Add a new command to the specified application."""
         if app_name in self.commands:
             command_id = str(uuid.uuid4())
@@ -59,9 +59,9 @@ class CommandManager:
                 'name': command_name,
                 'command': command_text,
                 'history': [],
-                'show_output': show_output
+                'show_output': True  # Default to show output
             }
-            self.add_command_history(app_name, command_id, command_text, event_type="creation", show_output=show_output)
+            self.add_command_history(app_name, command_id, command_text, event_type="creation")
             self.save_commands()
             return True
         return False
@@ -81,8 +81,7 @@ class CommandManager:
                                f"{command_text}"
                                f"----------------------------------------------------\n"
                                f"----------------------------------------------------\n",
-                    "output": "",
-                    "show_output": show_output
+                    "output": ""
                 }
             elif event_type == "edit":
                 history_entry = {
@@ -94,8 +93,7 @@ class CommandManager:
                               f"Command Edited on: {timestamp}\n"
                               f"New Command:\n{command_text}\n"
                               f"----------------------------------------------------\n"
-                              f"----------------------------------------------------\n",
-                    "show_output": show_output
+                              f"----------------------------------------------------\n"
                 }
             else:  # Default to "execution"
                 history_entry = {
@@ -131,7 +129,7 @@ class CommandManager:
             return True
         return False
 
-    def edit_command(self, app_name, command_id, new_name, new_command_text, show_output=True):
+    def edit_command(self, app_name, command_id, new_name, new_command_text, show_output):
         """Edit an existing command's name and text."""
         if app_name in self.commands and command_id in self.commands[app_name]:
             command_data = self.commands[app_name][command_id]
@@ -158,8 +156,7 @@ class CommandManager:
                            f"New Command:\n{new_command_text}\n"
                            f"----------------------------------------------------\n"
                            f"----------------------------------------------------\n",
-                "output": "",
-                "show_output": show_output
+                "output": ""
             }
             command_data['history'].append(history_entry)
 
@@ -343,32 +340,7 @@ class CommandApp(wx.Frame):
             "Developed by Rafael Martins\n"
             "© 2024"
         )
-        dialog = wx.Dialog(self, title="About BATER", size=(400, 300))
-        vbox = wx.BoxSizer(wx.VERTICAL)
-
-        about_label = wx.StaticText(dialog, label=about_text)
-        vbox.Add(about_label, 0, wx.ALL | wx.ALIGN_CENTER, 10)
-
-        # Adding a clickable URL using StaticText and binding the event
-        url_label = wx.StaticText(dialog, label="https://github.com/xrcm/bater/")
-        url_label.SetForegroundColour(wx.Colour(0, 0, 255))  # Set color to blue
-        font = url_label.GetFont()
-        font.SetUnderlined(True)  # Underline the text to indicate it's a link
-        url_label.SetFont(font)
-        vbox.Add(url_label, 0, wx.ALL | wx.ALIGN_CENTER, 10)
-
-        url_label.Bind(wx.EVT_LEFT_DOWN, lambda event: webbrowser.open("https://github.com/xrcm/bater/"))
-
-        check_update_button = wx.Button(dialog, label="Check for Update")
-        check_update_button.Bind(wx.EVT_BUTTON, self.check_for_update)
-        vbox.Add(check_update_button, 0, wx.ALL | wx.ALIGN_CENTER, 10)
-
-        close_button = wx.Button(dialog, label="Close")
-        close_button.Bind(wx.EVT_BUTTON, lambda event: dialog.Destroy())
-        vbox.Add(close_button, 0, wx.ALL | wx.ALIGN_CENTER, 10)
-
-        dialog.SetSizer(vbox)
-        dialog.ShowModal()
+        wx.MessageBox(about_text, "About", wx.OK | wx.ICON_INFORMATION)
 
     def edit_application_name(self, app_name):
         """Edit the name of the application."""
@@ -411,18 +383,18 @@ class CommandApp(wx.Frame):
         command_entry = wx.TextCtrl(dialog, value=command_data['command'], style=wx.TE_MULTILINE)
         vbox.Add(command_entry, 1, wx.ALL | wx.EXPAND, 5)
 
-        checkbox = wx.CheckBox(dialog, label="")
-        checkbox.SetValue(command_data.get('show_output', True))
-        checkbox.SetToolTip("Check to show output")
-        vbox.Add(checkbox, 0, wx.ALL | wx.EXPAND, 5)
+        show_output_checkbox = wx.CheckBox(dialog, label="")
+        show_output_checkbox.SetToolTip("Show output when executing this command")
+        show_output_checkbox.SetValue(command_data.get('show_output', True))
+        vbox.Add(show_output_checkbox, 0, wx.ALL, 5)
 
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
         save_button = wx.Button(dialog, label="Save")
-        save_button.Bind(wx.EVT_BUTTON, lambda event: self.save_command_changes(dialog, app_name, command_id, name_entry.GetValue(), command_entry.GetValue(), checkbox.GetValue()))
+        save_button.Bind(wx.EVT_BUTTON, lambda event: self.save_command_changes(dialog, app_name, command_id, name_entry.GetValue(), command_entry.GetValue(), show_output_checkbox.GetValue()))
         button_sizer.Add(save_button, 0, wx.ALL, 5)
 
         execute_button = wx.Button(dialog, label="Execute")
-        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue(), checkbox.GetValue()))
+        execute_button.Bind(wx.EVT_BUTTON, lambda event: self.execute_command(app_name, command_id, command_entry.GetValue(), show_output_checkbox.GetValue()))
         button_sizer.Add(execute_button, 0, wx.ALL, 5)
 
         close_button = wx.Button(dialog, label="Close")
@@ -544,8 +516,14 @@ class CommandApp(wx.Frame):
                 command_label = wx.StaticText(command_panel, label=command_name)
                 command_sizer.Add(command_label, 1, wx.ALL | wx.EXPAND, 5)
 
+                show_output_checkbox = wx.CheckBox(command_panel, label="")
+                show_output_checkbox.SetToolTip("Show output when executing this command")
+                show_output_checkbox.SetValue(command_data.get('show_output', True))
+                show_output_checkbox.Bind(wx.EVT_CHECKBOX, lambda event, cmd_id=command_id, app=app_name, cb=show_output_checkbox: self.update_show_output(app, cmd_id, cb.GetValue()))
+                command_sizer.Add(show_output_checkbox, 0, wx.ALL, 5)
+
                 run_button = wx.Button(command_panel, label="Run")
-                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd, command_data.get('show_output', True)))
+                run_button.Bind(wx.EVT_BUTTON, lambda event, cmd=command: self.execute_command(app_name, command_id, cmd, show_output_checkbox.GetValue()))
                 command_sizer.Add(run_button, 0, wx.ALL, 5)
 
                 edit_button = wx.Button(command_panel, label="Edit")
@@ -596,6 +574,12 @@ class CommandApp(wx.Frame):
         self.sizer.Add(flex_sizer, 1, wx.EXPAND | wx.ALL, 10)
         self.panel.SetupScrolling(scrollToTop=False)
         self.Layout()
+
+    def update_show_output(self, app_name, command_id, show_output):
+        """Update the show_output setting for a command."""
+        if app_name in self.command_manager.commands and command_id in self.command_manager.commands[app_name]:
+            self.command_manager.commands[app_name][command_id]['show_output'] = show_output
+            self.command_manager.save_commands()
 
 class CommandExecutor(threading.Thread):
     """Class responsible for executing shell commands in a separate thread to avoid freezing the UI."""
